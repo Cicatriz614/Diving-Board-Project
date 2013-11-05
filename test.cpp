@@ -51,9 +51,9 @@ void ForcePrint(Force*array,int num)
 //select chooses 0 (stiffness) 1 (dampness) or 2 (mass/moment)
 void localwbending(double**k,int size, Node*list, int first, int sec, int select)
 {
-    double cosine = list[first].getFrac(list[list[first].connto(sec)],0,1);
-    double sine = list[first].getFrac(list[list[first].connto(sec)],1,0);
-    double length = list[first].get_2D_Distance(list[list[first].connto(sec)],0,1); //can hopefully replace this with something more efficient since node are all adjacent to one another
+    double cosine = list[first].getFrac(list[sec],0,1);
+    double sine = list[first].getFrac(list[sec],1,0);
+    double length = list[first].get_2D_Distance(list[sec],0,1); //can hopefully replace this with something more efficient since node are all adjacent to one another
     double factor = 0;
 
     if(select == 0)
@@ -136,7 +136,7 @@ void coupledAssemble(Node*list,double**c,int select, int NCNT, int DoF)
         {
             //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
             localwbending(transformation,DoF*2,list,cnt,cnum,select);
-            addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF,list[cnt].getconnfactor(cnum,select));
+            addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
         }
     }
     DeleteMatrix(DoF*2,transformation);

@@ -168,7 +168,7 @@ double Node::GetConArea(int index)
 
 double Node:: getconnfactor(int index,int select)
 {
-    //return conn[index].factors[select];
+//    return conn[index].factors[select];
 }
 
 double Node:: getselffactor(int index)
