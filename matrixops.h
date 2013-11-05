@@ -364,7 +364,7 @@ void lud(double**matrix, double*b, int size, double*x)
 {
      double**upper = CreateMatrix(size);
      double**lower = CreateMatrix(size);
-     double y[size];
+     double*y= new double[size];
      double sum;
      for (int i=0; i<size; i++)
      {
@@ -421,6 +421,7 @@ void lud(double**matrix, double*b, int size, double*x)
      }
      DeleteMatrix(size,upper);
      DeleteMatrix(size,lower);
+     delete [] y;
 }
 //will merge with next function if time
 void createsubmatrix(double**Large,double**sub,int size, int*fixednodes)

@@ -21,7 +21,7 @@ double TwiceDTau;
 double *CurDisplacement;
 double *LastDisplacement;
 double *NextDisplacement;
-double ModulusofElasticity;
+double ModulusofElasticity = 70000000000;
 double ModulusofDamping;
 
 struct ForceSinusoid
@@ -168,7 +168,7 @@ void AAssemble(int size,double**M,double**C,double**A)
 int main()
 {
     //Initialization.
-    int NCNT, DoF, numFixed = 0;
+    int NCNT, DoF = 3, numFixed = 0;
     int *nodesfixed;
     Node*nodes = NULL;
     Force*exforce = NULL;
@@ -184,9 +184,9 @@ int main()
     cout << "Enter 1 for gravity, 0 for no gravity"
         << endl << "(Gravity is assumed to act in the negative y direction)" << endl;
     cin >> grav;
-    cout << "Enter the Modulus of Elasticity in GPa" << endl;
-    cin >> ModulusofElasticity ;
-    ModulusofElasticity *= 1e9;
+//    cout << "Enter the Modulus of Elasticity in GPa" << endl;
+//    cin >> ModulusofElasticity ;
+//    ModulusofElasticity *= 1e9;
     cout << "Enter the Modulus of Damping in whatever units" << endl;
     cin >> ModulusofDamping;
 
