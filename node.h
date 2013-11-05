@@ -25,7 +25,8 @@ class Node {
       public:
               void init(int,int); //this function will have the nodes either hard-coded or read from a CSV
               void initProb4(int);
-              void initProb(Node*, int, double, double, double, double, double, double, double, double, int, double, double, double, double);
+              void initProb(Node*, int, double, double, double, double, double, double, double, double,
+                            int, double, double, double, double,int*);
               void initNodeCell(int, bool, bool, double, int, double, double, double, double, double);
               void UpdateDelta(double*);
               double GetCurState(int);
@@ -89,192 +90,6 @@ void Node::init(int index, int DoF)
         std::cin>>conn[i].factors[2];
     }
     std::cout<<std::endl;
-}
-void Node::initProb3(int index)
-{
-    DegreesFreedom = 1;
-    curstate = new double[DegreesFreedom];
-    paststate = new double[DegreesFreedom];
-    initialstate = new double[DegreesFreedom];
-    Fixed = new bool[DegreesFreedom];
-    selffactors = new double[3];
-    selffactors[0] = 0;
-    selffactors[1] = 0;
-    curstate[0] = 0;
-    paststate[0] = 0;
-    switch (index)
-    {
-         case 0:
-            initialstate[0] = 80;
-            conn = new Connection[1];
-            conn[0].tonode = 1;
-            conn[0].factors[0] = 1000; //stiffness k = 100N/m
-            conn[0].factors[1] = 1200;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;   //no coupled mass (whatever that is)
-            selffactors[2] = 0;
-            conncount = 1;
-            Fixed[0] = TRUE;
-            break;
-         case 1:
-            initialstate[0] = 60;
-            conn = new Connection[2];
-            conn[0].tonode = 2;
-            conn[1].tonode = 3;
-            conn[0].factors[0] = 1500; //stiffness k = 100N/m
-            conn[0].factors[1] = 1600;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            conn[1].factors[0] = 2000; //stiffness k = 100N/m
-            conn[1].factors[1] = 1600;   //damping   c = 1  Ns/m
-            conn[1].factors[2] = 0;
-            selffactors[2] = 15;
-            conncount = 2;
-            Fixed[0] = FALSE;
-            break;
-         case 2:
-            initialstate[0] = 40;
-            conn = new Connection[1];
-            conn[0].tonode = 4;
-            conn[0].factors[0] = 1000; //stiffness k = 100N/m
-            conn[0].factors[1] = 0;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            selffactors[2] = 10;
-            conncount = 1;
-            Fixed[0] = FALSE;
-            break;
-         case 3:
-            initialstate[0] = 40;
-            conn = new Connection[1];
-            conn[0].tonode = 4;
-            conn[0].factors[0] = 2000; //stiffness k = 100N/m
-            conn[0].factors[1] = 1600;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            selffactors[2] = 0;
-            conncount = 1;
-            Fixed[0] = TRUE;
-            break;
-         case 4:
-            initialstate[0] = 20;
-            conn = new Connection[1];
-            conn[0].tonode = 2;
-            conn[0].factors[0] = 1200; //stiffness k = 100N/m
-            conn[0].factors[1] = 2500;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            selffactors[2] = 10;
-            conncount = 1;
-            Fixed[0] = FALSE;
-            break;
-         case 5:
-            initialstate[0] = 0;
-            conn = new Connection[0];
-            selffactors[2] = 0;
-            conncount = 0;
-            Fixed[0] = TRUE;
-            break;
-         default:
-            break;
-    }
-}
-
-void Node::initProb4(int index)
-{
-    DegreesFreedom = 2;
-    curstate = new double[DegreesFreedom];
-    paststate = new double[DegreesFreedom];
-    initialstate = new double[DegreesFreedom];
-    Fixed = new bool[DegreesFreedom];
-    selffactors = new double[3];
-    selffactors[0] = 0;
-    selffactors[1] = 0;
-    selffactors[2] = 1; //They are have a mass of 1kg
-    curstate[0] = 0;
-    curstate[1] = 0;
-    paststate[0] = 0;
-    paststate[0] = 0;
-    switch (index)
-    {
-         case 0:
-            initialstate[0] = -200;
-            initialstate[1] = 200;
-            conn = new Connection[1];
-            conn[0].tonode = 1;
-            conn[0].factors[0] = 100; //stiffness k = 100N/m
-            conn[0].factors[1] = 1;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;   //no coupled mass (whatever that is)
-            conncount = 1;
-            Fixed[0] = TRUE;
-            Fixed[1] = TRUE;
-            break;
-         case 1:
-            initialstate[0] = -100;
-            initialstate[1] = 100;
-            conn = new Connection[1];
-            conn[0].tonode = 2;
-            conn[0].factors[0] = 100; //stiffness k = 100N/m
-            conn[0].factors[1] = 1;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            conncount = 1;
-            Fixed[0] = FALSE;
-            Fixed[1] = FALSE;
-            break;
-         case 2:
-            initialstate[0] = 0;
-            initialstate[1] = 0;
-            conn = new Connection[2];
-            conn[0].tonode = 3;
-            conn[1].tonode = 5;
-            conn[0].factors[0] = 100; //stiffness k = 100N/m
-            conn[0].factors[1] = 1;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            conn[1].factors[0] = 100; //stiffness k = 100N/m
-            conn[1].factors[1] = 1;   //damping   c = 1  Ns/m
-            conn[1].factors[2] = 0;
-            conncount = 2;
-            Fixed[0] = FALSE;
-            Fixed[1] = FALSE;
-            break;
-         case 3:
-            initialstate[0] = -100;
-            initialstate[1] = -100;
-            conn = new Connection[1];
-            conn[0].tonode = 4;
-            conn[0].factors[0] = 100; //stiffness k = 100N/m
-            conn[0].factors[1] = 1;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;
-            conncount = 1;
-            Fixed[0] = FALSE;
-            Fixed[1] = FALSE;
-            break;
-         case 4:
-            initialstate[0] = -200;
-            initialstate[1] = -200;
-            conn = NULL;
-            conncount = 0;
-            Fixed[0] = TRUE;
-            Fixed[1] = TRUE;
-            break;
-         case 5:
-            initialstate[0] = 100;
-            initialstate[1] = 0;
-            conn = new Connection[1];
-            conn[0].tonode = 6;
-            conn[0].factors[0] = 100; //stiffness k = 100N/m
-            conn[0].factors[1] = 1;   //damping   c = 1  Ns/m
-            conn[0].factors[2] = 0;   //no coupled mass (whatever that is)
-            conncount = 1;
-            Fixed[0] = FALSE;
-            Fixed[1] = FALSE;
-            break;
-         case 6:
-            initialstate[0] = 0;
-            initialstate[1] = 200;
-            conn = NULL;
-            conncount = 0;
-            Fixed[0] = FALSE;
-            Fixed[1] = FALSE;
-            break;
-         default:
-            break;
-    }
 }
 
 void Node:: UpdateDelta(double *newPos)
@@ -362,7 +177,9 @@ double Node:: getselffactor(int index)
     return  selffactors[index];
 }
 
-void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_thickness, double length1, double length2, double height1, double height2, double height3, double width, int noofnodes, double fulcrum, double stiff, double damp, double density)
+void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_thickness, double length1,
+                    double length2, double height1, double height2, double height3, double width, int noofnodes,
+                    double fulcrum, double stiff, double damp, double density, int*nodesfixed)
 {
     double standard_length = (length1 + length2)/(noofnodes);
            standard_length = floor(standard_length*1000000)/1000000;
@@ -378,13 +195,13 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
     double position = 0;
     int current_node = 1;
     bool fulcrum_done = 0;
-    
+
     //First node (fixed node)
     DegreesFreedom = 2;
     curstate = new double[2];
     paststate = new double[2];
     initialstate = new double[2];
-    Fixed = new bool[2];
+    Fixed = new bool[3];
     selffactors = new double[3]; //proportional, derivative and second derivative term
     for(int i = 0;i<DegreesFreedom;i++)
     {
@@ -394,6 +211,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
     }
     Fixed[0] = 1;
     Fixed[1] = 1;
+    Fixed[2] = 0;
     conncount = 1;
     conn = new Connection[1];
     conn[0].factors[0] = stiff;
@@ -405,7 +223,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
     momentofinertia = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(nodeheight-2*wall_thickness)*(nodeheight-2*wall_thickness)) + (1/12)*(wall_thickness*(width-2*wall_thickness-ribs*rib_thickness)*(nodeheight-2*wall_thickness)/density)*((width-2*wall_thickness-ribs*rib_thickness)*(width-2*wall_thickness-ribs*rib_thickness)+(nodeheight-2*wall_thickness)*(nodeheight-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((nodeheight+wall_thickness)/2);
     selffactors[2] = vertical_mass + horizontal_mass + wall_thickness*(width-2*wall_thickness-ribs*rib_thickness)*(nodeheight-2*wall_thickness)/density;
     furthest_edge += standard_length/2;
-    
+
     while(furthest_edge < length1)
     {
         if(furthest_edge >= fulcrum && fulcrum_done == 0)
@@ -415,8 +233,8 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-             Nodes[current_node].initNodeCell(2,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
-             
+             Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
+             nodesfixed[2] = current_node;
              furthest_edge += standard_length;
              current_node++;
              fulcrum_done = 1;
@@ -427,12 +245,12 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
         vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
         horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
         moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-        Nodes[current_node].initNodeCell(2,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
-        
+        Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
+
         furthest_edge += standard_length;
         current_node++;
     }
-    
+
     while(furthest_edge < length2 + length1)
     {
         if(furthest_edge >= fulcrum && fulcrum_done == 0)
@@ -442,8 +260,8 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-             Nodes[current_node].initNodeCell(2,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
-             
+             Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
+
              furthest_edge += standard_length;
              current_node++;
              fulcrum_done = 1;
@@ -454,8 +272,8 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
         vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
         horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
         moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-        Nodes[current_node].initNodeCell(2,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
-        
+        Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
+
         furthest_edge += standard_length;
         current_node++;
         if(furthest_edge + standard_length > length2 + length1)
@@ -465,7 +283,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              vertical_mass = ((height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length/2) + (height-2*wall_thickness)*(width-ribs*rib_thickness-2*wall_thickness)*(wall_thickness)) /(density);
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-             Nodes[current_node].initNodeCell(2,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
+             Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position,height);
              break;
         }
     }
@@ -489,10 +307,11 @@ void Node::initNodeCell(int DoF, bool fixed_x, bool fixed_y, double mass, int No
     curstate[1] = 0;
     Fixed[0] = fixed_x;
     Fixed[1] = fixed_y;
+    Fixed[2] = 0;
     selffactors[2] = mass;
     conncount = NoC;
     conn = new Connection[conncount];
-    if(NoC = 1)
+    if(NoC == 1)
     {
         conn[0].factors[0] = stiff;
         conn[0].factors[1] = damp;

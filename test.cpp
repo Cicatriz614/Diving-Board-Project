@@ -21,7 +21,7 @@ double TwiceDTau;
 double *CurDisplacement;
 double *LastDisplacement;
 double *NextDisplacement;
-double ModulusofElasticity = 70000000000;
+double ModulusofElasticity = 70000000000; //
 double ModulusofDamping;
 
 struct ForceSinusoid
@@ -169,7 +169,9 @@ int main()
 {
     //Initialization.
     int NCNT, DoF = 3, numFixed = 0;
-    int *nodesfixed;
+    int nodesfixed[3];
+    nodesfixed[0] = 0;
+    nodesfixed[1] = 1;
     Node*nodes = NULL;
     Force*exforce = NULL;
     bool grav = false;
@@ -189,8 +191,18 @@ int main()
 //    ModulusofElasticity *= 1e9;
     cout << "Enter the Modulus of Damping in whatever units" << endl;
     cin >> ModulusofDamping;
+    cout << "Enter the number of nodes you would like to use" << endl;
+    cin >> NCNT;
 
+    nodes = new Node[NCNT];
+    //6 ribs, rib thickness 3mm, outer 6mm, 2.4384m half length, 0.034925m to 0.0508m to 0.022225m thick
+    //0.498475m wide
+    nodes[0].initProb(nodes,6,0.006,0.003,2.4384,2.4384,0.034925,0.0508,0.022225,0.498475,NCNT,2.4384,1,1,2850,nodesfixed);
+    size = DoF*NCNT;
+
+    output << size << endl;
     //allocate and zero out
+    exforce = new Force[size];
     CurDisplacement = new double[size];
     LastDisplacement = new double[size];
     NextDisplacement = new double[size];
@@ -262,34 +274,7 @@ int main()
         addm(Mc,Ms,Mc,size,size);
 
         fixindx = 0;
-        for(int j=0;j<size;j++)
-        {
-            if(exforce[j].type != 0) //if the force is external varying
-            {
-                if(exforce[j].type == 1) //sinusoid
-                {
-                    if(j&1)
-                    {
-                        exforce[j].curval = (exforce[j].FS.amplitude)*sin((exforce[j].FS.frequency)*((i)*DTau)) - grav*(9.80665*nodes[(j/DoF)].getselffactor(2));
-                    }
-                    else
-                    {
-                        exforce[j].curval = (exforce[j].FS.amplitude)*sin((exforce[j].FS.frequency)*((i)*DTau));
-                    }
-                }
-                else //ramp
-                {
-                    if(j&1)
-                    {
-                        exforce[j].curval = (exforce[j].multiplier)*((i)*DTau) - grav*(9.80665*nodes[(j/DoF)].getselffactor(2));
-                    }
-                    else
-                    {
-                        exforce[j].curval = (exforce[j].multiplier)*((i)*DTau);
-                    }
-                }
-            }
-        }
+
         GAssemble(size,Mc,Cc,Kc,G,exforce);
         AAssemble(size,Mc,Cc,A);
         createsubmatrix(A, submatrix,size,nodesfixed);
@@ -323,7 +308,12 @@ int main()
 
         if((i%plotinterval) == 0)
         {
-
+            for(int h=0;h<NCNT;h++)
+            {
+                for(int d=0;d<DoF;d++)
+                    output << CurDisplacement[h*DoF + d] << " " ;
+            }
+            output << endl;
         }
         //Shift Indices
         for(int j=0;j<NCNT;j++)
