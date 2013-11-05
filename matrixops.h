@@ -1,4 +1,5 @@
-/**************************MATRIX FUNCTIONS************************************/
+#define pi 3.1415926535898
+/************************MATRIX FUNCTIONS************************************/
 
 //creates a square matrix of size n
 double **CreateMatrix(int size)
@@ -29,6 +30,7 @@ void DeleteMatrix(int rows, double**Matrix)
 //prints out a matrix
 void MPrint(double**matrix,int rows, int columns)
 {
+    std::cout << std::endl;
     for(int i=0;i<rows;i++)
     {
         for(int j=0;j<columns;j++)
@@ -38,6 +40,7 @@ void MPrint(double**matrix,int rows, int columns)
         }
         std::cout << std::endl;
     }
+    std::cout << std::endl;
 }
 
 //given costheta and sintheta, this calculates the transformation matrix
@@ -113,13 +116,13 @@ void zero(double**matrix,int size)
 }
 
 //multiplies a matrix by a scalar
-void mulsca(double**matrix, int rows, int col, double scalar)
+void mulsca(double**matrix, double**out, int rows, int col, double scalar)
 {
      for (int i=0;i<rows;i++)
      {
          for (int j=0;j<col;j++)
          {
-             matrix[i][j] *= scalar;
+             out[i][j] = scalar*matrix[i][j];
          }
      }
 }
@@ -136,31 +139,50 @@ void addm(double**a,double**b,double**result,int rows,int col)
          }
      }
 }
-
-void addm2(double**a,double**b,double**result,int rows,int col,double A,double B)
+//General Form
+void addLocToGlo(double**global,double**local,int GIndex1, int GIndex2, int DoF)
 {
-     for (int i=0;i<rows;i++)
-     {
-         for (int j=0;j<col;j++)
-         {
-             result[i][j] = A*a[i][j] + B*b[i][j];
-         }
-     }
-}
-
-void addLocToGlo(double**global,double**local,int GIndex1, int GIndex2)
-{
-    if(GIndex2 >= 7)
+    GIndex1 *= DoF;
+    GIndex2 *= DoF;
+    for (int i=0;i<2*DoF;i++)
     {
-        return;
-    }
-    GIndex1 *= 2;
-    GIndex2 *= 2;
-    for (int i=0;i<4;i++)
-    {
-        for (int j=0;j<4;j++)
+        for (int j=0;j<2*DoF;j++)
         {
-            global[(GIndex1+(i&1)+(((i&2)>>1)*GIndex2))][(GIndex1+(j&1)+(((j&2)>>1)*GIndex2))] = local[i][j];
+            if(i<DoF)
+            {
+                if(j<DoF)
+                    global[GIndex1+i][GIndex1+j] += local[i][j];
+                else
+                    global[GIndex1+i][GIndex2+(j-DoF)] += local[i][j];
+            }
+            else if(j<DoF)
+                global[GIndex2+(i-DoF)][GIndex1+j] += local[i][j];
+            else
+                global[GIndex2+(i-DoF)][GIndex2+(j-DoF)] += local[i][j];
+        }
+    }
+    return;
+}
+//Multiplies the local matrix by a factor before adding it to the global matrix
+void addLocToGlo(double**global,double**local,int GIndex1, int GIndex2, int DoF, double factor)
+{
+    GIndex1 *= DoF;
+    GIndex2 *= DoF;
+    for (int i=0;i<2*DoF;i++)
+    {
+        for (int j=0;j<2*DoF;j++)
+        {
+            if(i<DoF)
+            {
+                if(j<DoF)
+                    global[GIndex1+i][GIndex1+j] += factor*local[i][j];
+                else
+                    global[GIndex1+i][GIndex2+(j-DoF)] += factor*local[i][j];
+            }
+            else if(j<DoF)
+                global[GIndex2+(i-DoF)][GIndex1+j] += factor*local[i][j];
+            else
+                global[GIndex2+(i-DoF)][GIndex2+(j-DoF)] += factor*local[i][j];
         }
     }
     return;
@@ -172,18 +194,7 @@ void subm(double**a,double**b,double**result,int rows,int col)
      {
          for (int j=0;j<col;j++)
          {
-             result[i][j] = a[i][j] -b[i][j];
-         }
-     }
-}
-
-void subm2(double**a,double**b,double**result,int rows,int col,double A,double B)
-{
-     for (int i=0;i<rows;i++)
-     {
-         for (int j=0;j<col;j++)
-         {
-             result[i][j] = A*a[i][j] - B*b[i][j];
+                result[i][j] = a[i][j] - b[i][j];
          }
      }
 }
@@ -331,7 +342,7 @@ void Copy(double**a,double**b,int size)
         }
     }
 }
-//returns the inverse of a matrix
+//returns the inverse of a matrix. Looking back, writing this and the cofactor function was a waste of time.
 void Invert(double**matrix, int size)
 {
     double determinant = det(matrix,size);
@@ -342,7 +353,7 @@ void Invert(double**matrix, int size)
     }
     double**cofactor = cofact(matrix,size);
     transpose(cofactor,size);
-    mulsca(cofactor,size,size,(1/determinant));
+    mulsca(cofactor,cofactor,size,size,(1/determinant));
     Copy(matrix,cofactor,size);
     DeleteMatrix(size,cofactor);
     cofactor = NULL;
@@ -351,17 +362,13 @@ void Invert(double**matrix, int size)
 
 void lud(double**matrix, double*b, int size, double*x)
 {
-     double**upper = CreateMatrix(size); 
+     double**upper = CreateMatrix(size);
      double**lower = CreateMatrix(size);
      double y[size];
      double sum;
      for (int i=0; i<size; i++)
      {
          upper[i][i] = 1;
-     }
-     
-     for (int i=0; i<size; i++)
-     {
          lower[i][0] = matrix[i][0];
      }
 
@@ -378,7 +385,7 @@ void lud(double**matrix, double*b, int size, double*x)
                        }
                        sum = sum/lower[perm/2][perm/2];
                        upper[perm/2][i] = sum;
-                   }         
+                   }
          }
          else
          {
@@ -412,4 +419,86 @@ void lud(double**matrix, double*b, int size, double*x)
          }
          x[i] = sum;
      }
+     DeleteMatrix(size,upper);
+     DeleteMatrix(size,lower);
+}
+//will merge with next function if time
+void createsubmatrix(double**Large,double**sub,int size, int*fixednodes)
+{
+    int si = 0, sj = 0, fixrow = 0, fixcol = 0;
+    for(int li=0;li<size;li++)
+    {
+        while(li == fixednodes[fixrow])
+        {
+            li++;
+            fixrow++;
+        }
+        if(li >= size)
+        {
+            break;
+        }
+        for(int lj=0;lj<size;lj++)
+        {
+            while(lj == fixednodes[fixcol])
+            {
+                lj++;
+                fixcol++;
+            }
+            if(lj >= size)
+            {
+                break;
+            }
+            sub[si][sj] = Large[li][lj];
+            sj++;
+        }
+        fixcol = 0;
+        sj = 0;
+        si++;
+    }
+}
+
+void PrintV(double*v,int length)
+{
+    std::cout<<std::endl;
+    for(int i=0;i<length;i++)
+    {
+        std::cout<< v[i] << std::endl;
+    }
+}
+
+void createsubG(double*Large,double*sub,int size, int*fixednodes)
+{
+    int si = 0, fix = 0;
+    for(int li = 0;li<size;li++)
+    {
+        while(li == fixednodes[fix])
+        {
+            li++;
+            fix++;
+        }
+        if(li >= size)
+        {
+            break;
+        }
+        sub[si] = Large[li] ;
+        si++;
+    }
+}
+
+double mulonerow(double**matrix,double*vector,int row, int length)
+{
+    double sum = 0;
+    for(int i=0; i<length; i++)
+    {
+        sum += matrix[row][i]*vector[i];
+    }
+    return sum;
+}
+
+void freqsweep(double*uc,double*up,double*result,double deltat,double freq,int size)
+{
+    for(int i=0; i<size; i++)
+    {
+        result[i] += ((deltat*freq)*(uc[i] + up[i]))/(4*pi);
+    }
 }
