@@ -274,7 +274,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
              Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width,current_node);
-
+             nodesfixed[2] = current_node;
              furthest_edge += standard_length;
              current_node++;
              fulcrum_done = 1;
