@@ -323,11 +323,12 @@ int main()
         amplitude[i] = 0;
         mean[i] = 0;
         peak[i] = -1e20;
+        exforce[i].curval = 0;
         if(grav && ((ony == 1)))
         {
             exforce[i].curval -= 9.80665*nodes[(i/DoF)].getselffactor(2); //exploiting integer division here
         }
-        if(ony++ >2)
+        if((ony++) >1)
         {
             ony = 0;
         }
@@ -335,8 +336,8 @@ int main()
 
     //first the selfreferential elements
     //they don't change
-    selfrefAssemble(nodes,Ks,0,NCNT,size,DoF);
-    selfrefAssemble(nodes,Cs,1,NCNT,size,DoF);
+    //selfrefAssemble(nodes,Ks,0,NCNT,size,DoF);
+    //selfrefAssemble(nodes,Cs,1,NCNT,size,DoF);
     selfrefAssemble(nodes,Ms,2,NCNT,size,DoF);
 
     int fixindx;
@@ -359,12 +360,14 @@ int main()
         {
             coupledAssemble(nodes,Kc,0,NCNT,DoF);
             coupledAssemble(nodes,Cc,1,NCNT,DoF);
-            coupledAssemble(nodes,Mc,2,NCNT,DoF);
+            addm(Kc,Ks,Kc,size,size);
+            addm(Cc,Cs,Cc,size,size);
+            //coupledAssemble(nodes,Mc,2,NCNT,DoF);
         }
 
-        addm(Kc,Ks,Kc,size,size);
-        addm(Cc,Cs,Cc,size,size);
-        addm(Mc,Ms,Mc,size,size);
+        //addm(Kc,Ks,Kc,size,size);
+        //addm(Cc,Cs,Cc,size,size);
+        //addm(Mc,Ms,Mc,size,size);
 
         MPrint(Kc,size,size);
         MPrint(Cc,size,size);
@@ -373,8 +376,15 @@ int main()
 
         GAssemble(size,Mc,Cc,Kc,G,exforce);
         AAssemble(size,Mc,Cc,A);
-        createsubmatrix(A, submatrix,size,nodesfixed);
-        createsubG(G,subG,size,nodesfixed);
+
+        MPrint(A,size,size);
+        PrintV(G,size);
+
+        createsubmatrix(A, submatrix,size,nodesfixed,numFixed);
+        createsubG(G,subG,size,nodesfixed,numFixed);
+
+        MPrint(submatrix,(size-numFixed),(size-numFixed));
+
         lud(submatrix,subG,(size-(numFixed)),subnextdis);
 
         //put next displacements into main vector
@@ -383,7 +393,7 @@ int main()
 
         for(int j=0;j<(size-(numFixed));j++)
         {
-            while(nodesfixed[fixindx] == lj)
+            while((nodesfixed[fixindx] == lj) && (fixindx < numFixed))
             {
                 lj++;
                 fixindx++;

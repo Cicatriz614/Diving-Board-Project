@@ -400,6 +400,8 @@ void lud(double**matrix, double*b, int size, double*x)
                    }
          }
      }
+     MPrint(upper,size,size);
+     MPrint(lower,size,size);
      for(int i=0; i<size; i++)
      {
          sum = b[i];
@@ -424,12 +426,12 @@ void lud(double**matrix, double*b, int size, double*x)
      delete [] y;
 }
 //will merge with next function if time
-void createsubmatrix(double**Large,double**sub,int size, int*fixednodes)
+void createsubmatrix(double**Large,double**sub,int size, int*fixednodes, int numFixed)
 {
     int si = 0, sj = 0, fixrow = 0, fixcol = 0;
     for(int li=0;li<size;li++)
     {
-        while(li == fixednodes[fixrow])
+        while((li == fixednodes[fixrow]) && (fixrow < numFixed))
         {
             li++;
             fixrow++;
@@ -440,7 +442,7 @@ void createsubmatrix(double**Large,double**sub,int size, int*fixednodes)
         }
         for(int lj=0;lj<size;lj++)
         {
-            while(lj == fixednodes[fixcol])
+            while((lj == fixednodes[fixcol]) && (fixcol < numFixed))
             {
                 lj++;
                 fixcol++;
@@ -467,12 +469,12 @@ void PrintV(double*v,int length)
     }
 }
 
-void createsubG(double*Large,double*sub,int size, int*fixednodes)
+void createsubG(double*Large,double*sub,int size, int*fixednodes, int numFixed)
 {
     int si = 0, fix = 0;
     for(int li = 0;li<size;li++)
     {
-        while(li == fixednodes[fix])
+        while((li == fixednodes[fix]) && (fix < numFixed))
         {
             li++;
             fix++;
