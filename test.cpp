@@ -53,7 +53,7 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
 {
     double cosine = list[first].getFrac(list[sec],0,1);
     double sine = list[first].getFrac(list[sec],1,0);
-    double length = list[first].get_2D_Distance(list[sec],0,1); //can hopefully replace this with something more efficient since node are all adjacent to one another
+    double length = list[first].get_init_length(list[sec],0,1); //can hopefully replace this with something more efficient since node are all adjacent to one another
     double factor = 0;
 
     if(select == 0)
@@ -83,15 +83,19 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
                 if(i%3 != j%3)
                 {
                     k[i][j] *= -6*(list[first].GetMoment())*length*sine;
+                    break;
                 }
                 else
                 {
                     k[i][j] *= -6*(list[first].GetMoment())*length*sine;
+                    break;
                 }
             case 3:
                 k[i][j] *= 6*(list[first].GetMoment())*length*cosine;
+                break;
             case 4:
                 k[i][j] *= 4*(list[first].GetMoment())*length*length;
+                break;
             }
             if((i>2 && j<2) || (i<2 && j>2)) //top right or bottom left quadrants of matrix
             {
@@ -99,6 +103,7 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
             }
         }
     }
+    MPrint(k,size,size);
 }
 
 //Select is used to choose double derivative, derivative, or proportional (2,1, or 0)
@@ -135,7 +140,7 @@ void coupledAssemble(Node*list,double**c,int select, int NCNT, int DoF)
         for(int cnum=0;cnum<list[cnt].getconn();cnum++)
         {
             //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
-            localwbending(transformation,DoF*2,list,cnt,cnum,select);
+            localwbending(transformation,DoF*2,list,cnt,list[cnt].connto(cnum),select);
             addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
         }
     }
@@ -273,6 +278,9 @@ int main()
         addm(Cc,Cs,Cc,size,size);
         addm(Mc,Ms,Mc,size,size);
 
+        MPrint(Kc,size,size);
+        MPrint(Cc,size,size);
+        MPrint(Mc,size,size);
         fixindx = 0;
 
         GAssemble(size,Mc,Cc,Kc,G,exforce);

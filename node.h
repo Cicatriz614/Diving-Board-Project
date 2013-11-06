@@ -26,7 +26,8 @@ class Node {
               void initProb4(int);
               void initProb(Node*, int, double, double, double, double, double, double, double, double,
                             int, double, double, double, double,int*);
-              void initNodeCell(int, bool, bool, double, int, double, double, double, double, double, double, double, double, int, double);
+              void initNodeCell(int, bool, bool, double, int, double, double, double, double, double,
+                                double, double, double, int, double, int);
               void UpdateDelta(double*);
               double GetCurState(int);
               double GetInitState(int);
@@ -37,6 +38,7 @@ class Node {
               int getconn();
               int connto(int);
               double get_2D_Distance(Node,int,int);
+              double get_init_length(Node,int,int);
               double getFrac(Node,int,int);
               double getselffactor(int);
               double getconnfactor(int,int);
@@ -137,6 +139,14 @@ double Node::get_2D_Distance(Node other, int index1, int index2)
     return sqrt(sum);
 }
 
+double Node::get_init_length(Node other, int index1, int index2)
+{
+    double sum;
+    sum = (initialstate[0]-other.initialstate[0])*(initialstate[0]-other.initialstate[0]);
+    sum += (initialstate[1]-other.initialstate[1])*(initialstate[1]-other.initialstate[1]);
+    return sqrt(sum);
+}
+
 //this gets the fraction that one degree affects another
 //If the system being solved was 2-D. X and Y would be index
 //0 and 1 respectively. Cos is delta-X over length.
@@ -216,6 +226,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
     conn = new Connection[1];
     nodeheight = (height1+slope1*standard_length/2);
     conn[0].area = (2*wall_thickness*width) + (2*wall_thickness+ribs*rib_thickness)*(nodeheight-2*wall_thickness);
+    conn[0].tonode = 1;
     //nodeheight = floor(nodeheight*1000000)/1000000;
     vertical_mass = ((nodeheight-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length/2) + (nodeheight-2*wall_thickness)*(width-ribs*rib_thickness-2*wall_thickness)*(wall_thickness)) /(density);
     horizontal_mass = 2*(width)*(wall_thickness)*(standard_length/2)/(density);
@@ -233,7 +244,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-             Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width);
+             Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width,current_node);
              nodesfixed[2] = current_node;
              furthest_edge += standard_length;
              current_node++;
@@ -246,7 +257,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
         vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
         horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
         moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-        Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width);
+        Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width,current_node);
 
         furthest_edge += standard_length;
         current_node++;
@@ -262,7 +273,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-             Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width);
+             Nodes[current_node].initNodeCell(3,0,1,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width,current_node);
 
              furthest_edge += standard_length;
              current_node++;
@@ -275,8 +286,7 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
         vertical_mass = (height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length)/(density);
         horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
         moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-        Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width);
-
+        Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width,current_node);
         furthest_edge += standard_length;
         current_node++;
         if(furthest_edge + standard_length > length2 + length1)
@@ -287,7 +297,8 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
              vertical_mass = ((height-2*wall_thickness)*(ribs*rib_thickness+2*wall_thickness)*(standard_length/2) + (height-2*wall_thickness)*(width-ribs*rib_thickness-2*wall_thickness)*(wall_thickness)) /(density);
              horizontal_mass = 2*(width)*(wall_thickness)*(standard_length)/(density);
              moment = (1/12)*(vertical_mass)*((2*wall_thickness+ribs*rib_thickness)*(2*wall_thickness+ribs*rib_thickness)+(height-2*wall_thickness)*(height-2*wall_thickness)) + (1/6)*(horizontal_mass)*((width)*(width)+(wall_thickness)*(wall_thickness))+(horizontal_mass)*((height+wall_thickness)/2);
-             Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width);
+             Nodes[current_node].initNodeCell(3,0,0,vertical_mass+horizontal_mass,1,stiff,damp,moment,position_x,position_y,height,wall_thickness,rib_thickness,ribs,width,current_node);
+             Nodes[current_node].conncount = 0;
              break;
         }
     }
@@ -295,7 +306,9 @@ void Node::initProb(Node Nodes[], int ribs, double wall_thickness, double rib_th
 
 
 
-void Node::initNodeCell(int DoF, bool fixed_x, bool fixed_y, double mass, int NoC, double stiff, double damp, double moment, double position_x, double position_y, double height, double wall_thickness, double rib_thickness, int ribs, double width)
+void Node::initNodeCell(int DoF, bool fixed_x, bool fixed_y, double mass, int NoC, double stiff,
+                        double damp, double moment, double position_x, double position_y, double height,
+                        double wall_thickness, double rib_thickness, int ribs, double width, int currentnode)
 {
     DegreesFreedom = DoF;
     curstate = new double[DoF];
@@ -320,4 +333,5 @@ void Node::initNodeCell(int DoF, bool fixed_x, bool fixed_y, double mass, int No
     conncount = 1;
     conn = new Connection[1];
     conn[0].area = (2*wall_thickness*width) + (2*wall_thickness+ribs*rib_thickness)*(nodeheight-2*wall_thickness);
+    conn[0].tonode = currentnode+1;
 }
