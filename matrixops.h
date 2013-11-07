@@ -35,7 +35,7 @@ void MPrint(double**matrix,int rows, int columns)
     {
         for(int j=0;j<columns;j++)
         {
-            std::cout.width(5);
+            std::cout.width(8);
             std::cout << matrix[i][j];
         }
         std::cout << std::endl;

@@ -47,6 +47,10 @@ class Node {
               double GetConArea(int);
               void initProb3(int);
               void gettransformation(Node,double**);
+              double tanInv(Node);
+              void formDampMatrix(double**,double*,Node,int,double,double);
+              double getInitialstate(int);
+              double getCurstate(int);
 };
 
 /***********************CLASS FUNCTIONS***********************************/
@@ -290,16 +294,6 @@ void Node::initProb(Node Nodes[], int ribs, double twall, double trib, double l1
              fulcrum_done = 1;
              continue;
         }
-        height = Nodes[current_node-1].nodeheight + slope2*sl;
-        x = Nodes[current_node-1].initialstate[0] + sl;
-        y = (h1-height)/2;
-        vm = (height-2*twall)*(ribs*trib+2*twall)*(sl)*(density);
-        hm = 2*(width)*(twall)*(sl)*(density);
-
-        moment = (hm/12)*width*width + (hm*(height-twall)*(height-twall)/4) + (vm/12)*(2*twall+ribs*trib)*(2*twall+ribs*trib);
-        Nodes[current_node].initNodeCell(3,0,0,vm+hm,1,stiff,damp,moment,x,y,height,twall,trib,ribs,width,current_node);
-        furthest_edge += sl;
-        current_node++;
         if((furthest_edge + sl) > (l2 + l1))
         {
              height = ((Nodes[current_node-1].nodeheight + slope2*sl/2) + h3)/2;
@@ -313,6 +307,16 @@ void Node::initProb(Node Nodes[], int ribs, double twall, double trib, double l1
              Nodes[current_node].conncount = 0;
              break;
         }
+        height = Nodes[current_node-1].nodeheight + slope2*sl;
+        x = Nodes[current_node-1].initialstate[0] + sl;
+        y = (h1-height)/2;
+        vm = (height-2*twall)*(ribs*trib+2*twall)*(sl)*(density);
+        hm = 2*(width)*(twall)*(sl)*(density);
+
+        moment = (hm/12)*width*width + (hm*(height-twall)*(height-twall)/4) + (vm/12)*(2*twall+ribs*trib)*(2*twall+ribs*trib);
+        Nodes[current_node].initNodeCell(3,0,0,vm+hm,1,stiff,damp,moment,x,y,height,twall,trib,ribs,width,current_node);
+        furthest_edge += sl;
+        current_node++;
     }
 }
 
@@ -343,11 +347,69 @@ void Node::initNodeCell(int DoF, bool fixed_x, bool fixed_y, double mass, int No
     momentofinertia = moment;
     areamoment = (width*nodeheight*nodeheight*nodeheight-(width-ribs*rib_thickness-2*wall_thickness)*(nodeheight-2*wall_thickness)*(nodeheight-2*wall_thickness)*(nodeheight-2*wall_thickness))/12;
 
-    double test = areamoment;
-
     nodeheight = height;
     conncount = 1;
     conn = new Connection[1];
     conn[0].area = (2*wall_thickness*width) + (2*wall_thickness+ribs*rib_thickness)*(nodeheight-2*wall_thickness);
     conn[0].tonode = currentnode+1;
+}
+
+double Node::getInitialstate(int index)
+{
+    return initialstate[index];
+}
+
+double Node::getCurstate(int index)
+{
+    return curstate[index];
+}
+
+double Node::tanInv(Node next)
+{
+    double x = (next.getInitialstate(0)+next.getCurstate(0)) - (initialstate[0]+curstate[0]);
+    double y = (next.getInitialstate(1)+next.getCurstate(1)) - (initialstate[1]+curstate[1]);
+    if(x < 0 && y > 0)
+    {
+        return pi + atan(y/x);
+    }
+    if(x < 0 && y < 0)
+    {
+        return atan(y/x) - pi;
+    }
+    if(x == 0 && y > 0)
+    {
+        return pi/2;
+    }
+    if(x == 0 && y < 0)
+    {
+        return -pi/2;
+    }
+    if(x == 0 && y == 0)
+    {
+        return NAN;
+    }
+    return atan(y/x);
+}
+
+void Node::formDampMatrix(double**damp, double*CurDisplacement, Node next, int node, double width, double linfag)
+{
+    double c = cos(((*this).tanInv(next)) + CurDisplacement[3*node + 2]);
+    double c2 = c*c;
+    double s = sin((*this).tanInv(next) + CurDisplacement[3*node + 2]);
+    double s2 = s*s;
+    double b = 1.33917*nodelength*width;
+    damp[0][0] = linfag*b*c2;
+    damp[0][1] = linfag*b*c*s;
+    damp[0][2] = 0;
+    damp[1][0] = -linfag*b*c*s;
+    damp[1][1] = linfag*b*s2;
+    damp[1][2] = 0;
+    damp[2][0] = 0;
+    damp[2][1] = 0;
+    if(node == 0)
+        damp[2][2] = 100;
+    else
+        damp[2][2] = 0;
+
+    return;
 }

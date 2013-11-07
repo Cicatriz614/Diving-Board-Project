@@ -165,14 +165,30 @@ void coupledAssemble(Node*list,double**c,int select, int NCNT, int DoF)
 {
     zero(c,DoF*NCNT);
     double**transformation = CreateMatrix(DoF*2);
-    for(int cnt=0;cnt<NCNT;cnt++)
+    if(select == 0)
     {
-        for(int cnum=0;cnum<list[cnt].getconn();cnum++)
+        for(int cnt=0;cnt<NCNT;cnt++)
         {
-            //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
-            localwbending(transformation,DoF*2,list,cnt,list[cnt].connto(cnum),select);
-            MPrint(transformation,6,6);
-            addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
+            for(int cnum=0;cnum<list[cnt].getconn();cnum++)
+            {
+                //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
+                localwbending(transformation,DoF*2,list,cnt,list[cnt].connto(cnum),select);
+                MPrint(transformation,6,6);
+                addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
+            }
+        }
+    }
+    else if(select == 1)
+    {
+        for(int cnt=0;cnt<NCNT;cnt++)
+        {
+            for(int cnum=0;cnum<list[cnt].getconn();cnum++)
+            {
+                //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
+                list[cnt].formDampMatrix(transformation,CurDisplacement,list[list[cnt].connto(cnum)],cnt,0.497475,2);
+                MPrint(transformation,6,6);
+                addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
+            }
         }
     }
     DeleteMatrix(DoF*2,transformation);
@@ -186,7 +202,7 @@ void GAssemble(int size,double**M,double**C,double**K,double*G,Force*forces)
         G[i] = forces[i].curval;
         for(int j=0;j<size;j++)
         {
-            G[i] += ((2*M[i][j]/DTauSqd)-K[i][j])*CurDisplacement[j] + ((C[i][j]/TwiceDTau) - (M[i][j]/DTauSqd))*LastDisplacement[j];
+            G[i] += ((-2*M[i][j]/DTauSqd)+K[i][j])*CurDisplacement[j] + (-(C[i][j]/TwiceDTau) + (M[i][j]/DTauSqd))*LastDisplacement[j];
         }
     }
 }
@@ -285,7 +301,7 @@ int main()
     //they don't change
     //selfrefAssemble(nodes,Ks,0,NCNT,size,DoF);
     //selfrefAssemble(nodes,Cs,1,NCNT,size,DoF);
-    selfrefAssemble(nodes,Ms,2,NCNT,size,DoF);
+    //selfrefAssemble(nodes,Ms,2,NCNT,size,DoF);
 
     int fixindx;
     int lj;
@@ -311,10 +327,6 @@ int main()
             //addm(Cc,Cs,Cc,size,size);
             //coupledAssemble(nodes,Mc,2,NCNT,DoF);
         }
-
-        //addm(Kc,Ks,Kc,size,size);
-        //addm(Cc,Cs,Cc,size,size);
-        //addm(Mc,Ms,Mc,size,size);
 
         MPrint(Kc,size,size);
         MPrint(Cc,size,size);
