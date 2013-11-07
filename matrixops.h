@@ -400,8 +400,8 @@ void lud(double**matrix, double*b, int size, double*x)
                    }
          }
      }
-     MPrint(upper,size,size);
-     MPrint(lower,size,size);
+     //MPrint(upper,size,size);
+     //MPrint(lower,size,size);
      for(int i=0; i<size; i++)
      {
          sum = b[i];

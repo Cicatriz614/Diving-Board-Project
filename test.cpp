@@ -54,7 +54,7 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
     //int number = i_node;
 	double l = list[first].get_init_length(list[sec],0,1);
 	double a = list[first].GetConArea(0);
-	double i = list[first].GetMoment();
+	double i = list[first].GetAreaMoment();
 	double c = list[first].getFrac(list[sec],0,1);
 	double s = list[first].getFrac(list[sec],1,0);
 
@@ -79,13 +79,13 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
 /*
 	k =
 	{
-//		{			1,				2,			3,				4,					5,		6,	}
-		{  i12*s2 +al2*c2,	 (al2-i12)*cs, -6*i*l*s, -i12*s2 -al2*c2,	  (i12-al2)*cs, -6*i*l*s},	// row 0
+//		{			0,				1,			2,				3,					4,		5,	}
+		{  i12*s2 +al2*c2,	 (al2-i12)*cs, -6*i*l*s, -i12*s2 -al2*c2,	  (i12-al2)*cs,  6*i*l*s},	// row 0
 		{	 (al2-i12)*cs, i12*c2 +al2*s2,  6*i*l*c,	(i12-al2)*cs,  -i12*c2 -al2*s2,  6*i*l*c},	// row 1
 		{		 -6*i*l*s,		  6*i*l*c,  4*i*l*l,		 6*i*l*s,		  -6*i*l*c,  2*i*l*l},	// row 2
 		{ -i12*s2 -al2*c2,	 (i12-al2)*cs,	6*i*l*s,  i12*s2 +al2*c2,	  (al2-i12)*cs,  6*i*l*s},	// row 3
 		{	 (i12-al2)*cs,-i12*c2 -al2*s2, -6*i*l*c,	(al2-i12)*cs,	i12*c2 +al2*s2, -6*i*l*c},	// row 4
-		{		 -6*i*l*s,		  6*i*l*c,	2*i*l*l,		 6*i*l*s,		  -6*i*l*c,  4*i*l*l},	// row 5
+		{		  6*i*l*s,		  6*i*l*c,	2*i*l*l,		 6*i*l*s,		  -6*i*l*c,  4*i*l*l},	// row 5
 	};
 */
     k[0][0] = i12*s2 +al2*c2;
@@ -93,7 +93,7 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
     k[0][2] = -6*i*l*s;
     k[0][3] = -i12*s2 -al2*c2;
     k[0][4] = (i12-al2)*cs;
-    k[0][5] = -6*i*l*s;
+    k[0][5] = 6*i*l*s;
     k[1][0] = (al2-i12)*cs;
     k[1][1] = i12*c2 +al2*s2;
     k[1][2] = 6*i*l*c;
@@ -118,7 +118,7 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
     k[4][3] = (al2-i12)*cs;
     k[4][4] = i12*c2 +al2*s2;
     k[4][5] = -6*i*l*c;
-    k[5][0] = -6*i*l*s;
+    k[5][0] = 6*i*l*s;
     k[5][1] = 6*i*l*c;
     k[5][2] = 2*i*l*l;
     k[5][3] = 6*i*l*s;
@@ -133,61 +133,7 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
 		}
 
 	}
-    /*
-    double cosine = list[first].getFrac(list[sec],0,1);
-    double sine = list[first].getFrac(list[sec],1,0);
-    double length = list[first].get_init_length(list[sec],0,1); //can hopefully replace this with something more efficient since node are all adjacent to one another
-    double factor = 0;
-
-    if(select == 0)
-    {
-        factor = ModulusofElasticity;
-    }
-    else if(select == 1)
-    {
-        factor = ModulusofDamping;
-    }
-    int compare;
-    for(int i = 0;i<size;i++)
-    {
-        for(int j=0;j<size;j++)
-        {
-            compare = i%3 + j%3;
-            k[i][j] = factor/(length*length*length);
-            switch(compare)
-            {
-            case 0:
-                k[i][j] *= 12*(list[first].GetMoment())*sine*sine + (list[first].GetConArea(sec))*length*length*cosine*cosine;
-                break;
-            case 1:
-                k[i][j] *= cosine*sine*((list[first].GetConArea(sec))*length*length - 12*(list[first].GetMoment()));
-                break;
-            case 2:
-                if(i%3 != j%3)
-                {
-                    k[i][j] *= -6*(list[first].GetMoment())*length*sine;
-                    break;
-                }
-                else
-                {
-                    k[i][j] *= -6*(list[first].GetMoment())*length*sine;
-                    break;
-                }
-            case 3:
-                k[i][j] *= 6*(list[first].GetMoment())*length*cosine;
-                break;
-            case 4:
-                k[i][j] *= 4*(list[first].GetMoment())*length*length;
-                break;
-            }
-            if((i>2 && j<2) || (i<2 && j>2)) //top right or bottom left quadrants of matrix
-            {
-                k[i][j] *= -1;
-            }
-        }
-    }
-    */
-    MPrint(k,size,size);
+    ////MPrint(k,size,size);
 }
 
 //Select is used to choose double derivative, derivative, or proportional (2,1, or 0)
@@ -225,6 +171,7 @@ void coupledAssemble(Node*list,double**c,int select, int NCNT, int DoF)
         {
             //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
             localwbending(transformation,DoF*2,list,cnt,list[cnt].connto(cnum),select);
+            MPrint(transformation,6,6);
             addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
         }
     }
@@ -360,8 +307,8 @@ int main()
         {
             coupledAssemble(nodes,Kc,0,NCNT,DoF);
             coupledAssemble(nodes,Cc,1,NCNT,DoF);
-            addm(Kc,Ks,Kc,size,size);
-            addm(Cc,Cs,Cc,size,size);
+            //addm(Kc,Ks,Kc,size,size);
+            //addm(Cc,Cs,Cc,size,size);
             //coupledAssemble(nodes,Mc,2,NCNT,DoF);
         }
 
@@ -371,11 +318,11 @@ int main()
 
         MPrint(Kc,size,size);
         MPrint(Cc,size,size);
-        MPrint(Mc,size,size);
+        MPrint(Ms,size,size);
         fixindx = 0;
 
-        GAssemble(size,Mc,Cc,Kc,G,exforce);
-        AAssemble(size,Mc,Cc,A);
+        GAssemble(size,Ms,Cc,Kc,G,exforce);
+        AAssemble(size,Ms,Cc,A);
 
         MPrint(A,size,size);
         PrintV(G,size);
@@ -431,6 +378,13 @@ int main()
                 CurDisplacement[(j*DoF + d)] = NextDisplacement[(j*DoF + d)];
             }
             nodes[j].UpdateDelta(updatevector);
+        }
+
+        //code to see if system if stable.
+        //it's not (very bad)
+        for(int d=0;d<size;d++)
+        {
+            exforce[d].curval = 0;
         }
     }
 
