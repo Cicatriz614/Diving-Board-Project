@@ -11,6 +11,7 @@
 #define DAMPING 1
 #define STIFFNESS 100
 */
+
 using namespace std;
 
 //Global Variables
@@ -23,6 +24,8 @@ double *LastDisplacement;
 double *NextDisplacement;
 double ModulusofElasticity = 70000000000; //
 double ModulusofDamping;
+const double Bull = 1000;
+const double dampfac = 1.33509;
 
 struct ForceSinusoid
 {
@@ -48,8 +51,25 @@ void ForcePrint(Force*array,int num)
         cout << array[i].curval << endl;
     }
 }
+
+void transformation(Node*list,int first,int sec, double**trans)
+{
+    double c = list[first].getFrac(list[sec],0,1);
+    double s = list[first].getFrac(list[sec],1,0);
+    zero(trans,6);
+    trans[0][0] = c;
+    trans[1][1] = c;
+    trans[2][2] = 1;
+    trans[3][3] = c;
+    trans[4][4] = c;
+    trans[5][5] = 1;
+    trans[0][1] = s;
+    trans[1][0] = -s;
+    trans[3][4] = s;
+    trans[4][3] = -s;
+}
 //select chooses 0 (stiffness) 1 (dampness) or 2 (mass/moment)
-void localwbending(double**k,int size, Node*list, int first, int sec, int select)
+void localwbending(double**k, Node*list, int first, int sec)
 {
     //int number = i_node;
 	double l = list[first].get_init_length(list[sec],0,1);
@@ -61,14 +81,8 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
 	double al2 = a*l*l;
 	double i12 = 12*i;
 	double e13;
-	if(select == 0)
-    {
-        e13 = ModulusofElasticity/l/l/l;
-    }
-    else if(select == 1)
-    {
-        e13 = ModulusofDamping/l/l/l;
-    }
+
+    e13 = ModulusofElasticity/l/l/l;
 	//double el3 = d_ElaMod/l/l/l;
 
 	double c2 = c*c;
@@ -136,63 +150,57 @@ void localwbending(double**k,int size, Node*list, int first, int sec, int select
     ////MPrint(k,size,size);
 }
 
-//Select is used to choose double derivative, derivative, or proportional (2,1, or 0)
-//Note: This function has been basterdized for the diving board project and no longer works for general applications
-void selfrefAssemble(Node*list,double**m,int select, int NCNT, int size, int DOF)
+void KAssemble(double**k,Node*list,int NCNT)
 {
-    zero(m,size);
+    double**local = CreateMatrix(6);
     for(int i=0;i<NCNT;i++)
     {
-        if(!(list[i].getselffactor(select) <= 1e-5))
+        for(int j=0;j<list[i].getconn();j++)
         {
-            for(int j=0; j<DOF;j++)
-            {
-                if(j != 2)
-                    m[i*DOF+j][i*DOF+j]=list[i].getselffactor(select);
-                else
-                    m[i*DOF+j][i*DOF+j]=list[i].GetMoment();
-            }
+            localwbending(local,list,i,list[i].connto(0));
+            addLocToGlo(k,local,i,list[i].connto(0),3);
         }
-
     }
+    DeleteMatrix(6,local);
 }
 
+void localc(double**local,Node*list,int first,int sec)
+{
+    double**rot = CreateMatrix(6);
+    transformation(list,first,sec,rot);
+    zero(local,6);
+    c[2][2] = Bull;
+    c[2][5] = -Bull;
+    c[5][2] = -Bull;
+    c[5][5] = Bull;
+    c[0][0] = dampfac*list[first].getNodelength();
+    c[3][0] = -dampfac*list[first].getNodelength();
+    c[0][3] = -dampfac*list[sec].getNodelength();
+    c[3][3] = dampfac*list[sec].getNodelength();
+    mulsquare(c,rot,c,6);
+    transpose(rot,6);
+    mulsquare(rot,c,c,6);
+    DeleteMatrix(6,rot);
+}
+
+void CAssemble(double**c,Node*list,int NCNT)
+{
+    double**local = CreateMatrix(6);
+    for(int i=0;i<NCNT;i++)
+    {
+        for(int j=0;j<list[i].getconn();j++)
+        {
+            localc(local,list,i,list[i].connto(0));
+            addLocToGlo(c,local,i,list[i].connto(0),3);
+        }
+    }
+    DeleteMatrix(6,local);
+}
 //Select is used to choose double derivative, derivative, or proportional (2,1, or 0)
 //It is assumed that the dependant variable (ex. force) is only transferred axially
 //transformation matrix is passed as a parameter so that it can be used multiple
 //times without recalculating
-void coupledAssemble(Node*list,double**c,int select, int NCNT, int DoF)
-{
-    zero(c,DoF*NCNT);
-    double**transformation = CreateMatrix(DoF*2);
-    if(select == 0)
-    {
-        for(int cnt=0;cnt<NCNT;cnt++)
-        {
-            for(int cnum=0;cnum<list[cnt].getconn();cnum++)
-            {
-                //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
-                localwbending(transformation,DoF*2,list,cnt,list[cnt].connto(cnum),select);
-                MPrint(transformation,6,6);
-                addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
-            }
-        }
-    }
-    else if(select == 1)
-    {
-        for(int cnt=0;cnt<NCNT;cnt++)
-        {
-            for(int cnum=0;cnum<list[cnt].getconn();cnum++)
-            {
-                //list[cnt].gettransformation(list[list[cnt].connto(cnum)], transformation);
-                list[cnt].formDampMatrix(transformation,CurDisplacement,list[list[cnt].connto(cnum)],cnt,0.497475,2);
-                MPrint(transformation,6,6);
-                addLocToGlo(c,transformation,cnt,list[cnt].connto(cnum),DoF);
-            }
-        }
-    }
-    DeleteMatrix(DoF*2,transformation);
-}
+
 
 // matrices named for M, C, and K for visualization purposes
 void GAssemble(int size,double**M,double**C,double**K,double*G,Force*forces)
@@ -260,12 +268,9 @@ int main()
     NextDisplacement = new double[size];
     double *G = new double[size];
     double **A = CreateMatrix(size);
-    double **Ks = CreateMatrix(size);
-    double **Cs = CreateMatrix(size);
-    double **Ms = CreateMatrix(size);
-    double **Kc = CreateMatrix(size);
-    double **Cc = CreateMatrix(size);
-    double **Mc = CreateMatrix(size);
+    double **K = CreateMatrix(size);
+    double **C = CreateMatrix(size);
+    double **M = CreateMatrix(size);
     double updatevector[DoF];
     double **submatrix = CreateMatrix(size-(numFixed));
     double *subG = new double[size-(numFixed)];
@@ -297,12 +302,6 @@ int main()
         }
     }
 
-    //first the selfreferential elements
-    //they don't change
-    //selfrefAssemble(nodes,Ks,0,NCNT,size,DoF);
-    //selfrefAssemble(nodes,Cs,1,NCNT,size,DoF);
-    //selfrefAssemble(nodes,Ms,2,NCNT,size,DoF);
-
     int fixindx;
     int lj;
 
@@ -321,20 +320,21 @@ int main()
 
         if(1) //this should be replaced by criteria for updating the matrices
         {
-            coupledAssemble(nodes,Kc,0,NCNT,DoF);
-            coupledAssemble(nodes,Cc,1,NCNT,DoF);
+
+            //coupledAssemble(nodes,Kc,0,NCNT,DoF);
+            //coupledAssemble(nodes,Cc,1,NCNT,DoF);
             //addm(Kc,Ks,Kc,size,size);
             //addm(Cc,Cs,Cc,size,size);
             //coupledAssemble(nodes,Mc,2,NCNT,DoF);
         }
 
-        MPrint(Kc,size,size);
-        MPrint(Cc,size,size);
-        MPrint(Ms,size,size);
+        MPrint(K,size,size);
+        MPrint(C,size,size);
+        MPrint(M,size,size);
         fixindx = 0;
 
-        GAssemble(size,Ms,Cc,Kc,G,exforce);
-        AAssemble(size,Ms,Cc,A);
+        GAssemble(size,M,C,K,G,exforce);
+        AAssemble(size,M,C,A);
 
         MPrint(A,size,size);
         PrintV(G,size);

@@ -51,6 +51,7 @@ class Node {
               void formDampMatrix(double**,double*,Node,int,double,double);
               double getInitialstate(int);
               double getCurstate(int);
+              double getNodelength();
 };
 
 /***********************CLASS FUNCTIONS***********************************/
@@ -59,6 +60,10 @@ double Node::GetMoment()
     return momentofinertia;
 }
 
+double Node::getNodelength()
+{
+    return nodelength;
+}
 double Node::GetAreaMoment()
 {
     return areamoment;
