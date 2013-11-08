@@ -22,57 +22,16 @@ double TwiceDTau;
 double *CurDisplacement;
 double *LastDisplacement;
 double *NextDisplacement;
-double ModulusofElasticity = 70000000000; //
-double ModulusofDamping;
-const double Bull = 1000;
-const double dampfac = 1.33509;
+double ModulusofElasticity = 100000000; //About right for 7000 series alloy
+const double Bull = 10;
+const double dampfac = 1.26044887;
+const double density = 2800; //kg/m3
 
-struct ForceSinusoid
-{
-    public:
-    double frequency;
-    double amplitude;
-};
-
-struct Force
-{
-    public:
-    int type; //0 for constant force, 1 for sinusoidal, 2 for ramp
-    ForceSinusoid FS;
-    double curval;
-    double multiplier;
-};
-
-void ForcePrint(Force*array,int num)
-{
-    cout << endl;
-    for(int i = 0;i<num;i++)
-    {
-        cout << array[i].curval << endl;
-    }
-}
-
-void transformation(Node*list,int first,int sec, double**trans)
-{
-    double c = list[first].getFrac(list[sec],0,1);
-    double s = list[first].getFrac(list[sec],1,0);
-    zero(trans,6);
-    trans[0][0] = c;
-    trans[1][1] = c;
-    trans[2][2] = 1;
-    trans[3][3] = c;
-    trans[4][4] = c;
-    trans[5][5] = 1;
-    trans[0][1] = s;
-    trans[1][0] = -s;
-    trans[3][4] = s;
-    trans[4][3] = -s;
-}
 //select chooses 0 (stiffness) 1 (dampness) or 2 (mass/moment)
 void localwbending(double**k, Node*list, int first, int sec)
 {
     //int number = i_node;
-	double l = list[first].get_init_length(list[sec],0,1);
+	double l = list[first].get_init_length(list[sec]);
 	double a = list[first].GetConArea(0);
 	double i = list[first].GetAreaMoment();
 	double c = list[first].getFrac(list[sec],0,1);
@@ -94,12 +53,12 @@ void localwbending(double**k, Node*list, int first, int sec)
 	k =
 	{
 //		{			0,				1,			2,				3,					4,		5,	}
-		{  i12*s2 +al2*c2,	 (al2-i12)*cs, -6*i*l*s, -i12*s2 -al2*c2,	  (i12-al2)*cs,  6*i*l*s},	// row 0
+		{  i12*s2 +al2*c2,	 (al2-i12)*cs, -6*i*l*s, -i12*s2 -al2*c2,	  (i12-al2)*cs, -6*i*l*s},	// row 0
 		{	 (al2-i12)*cs, i12*c2 +al2*s2,  6*i*l*c,	(i12-al2)*cs,  -i12*c2 -al2*s2,  6*i*l*c},	// row 1
 		{		 -6*i*l*s,		  6*i*l*c,  4*i*l*l,		 6*i*l*s,		  -6*i*l*c,  2*i*l*l},	// row 2
 		{ -i12*s2 -al2*c2,	 (i12-al2)*cs,	6*i*l*s,  i12*s2 +al2*c2,	  (al2-i12)*cs,  6*i*l*s},	// row 3
 		{	 (i12-al2)*cs,-i12*c2 -al2*s2, -6*i*l*c,	(al2-i12)*cs,	i12*c2 +al2*s2, -6*i*l*c},	// row 4
-		{		  6*i*l*s,		  6*i*l*c,	2*i*l*l,		 6*i*l*s,		  -6*i*l*c,  4*i*l*l},	// row 5
+		{		 -6*i*l*s,		  6*i*l*c,	2*i*l*l,		 6*i*l*s,		  -6*i*l*c,  4*i*l*l},	// row 5
 	};
 */
     k[0][0] = i12*s2 +al2*c2;
@@ -107,7 +66,7 @@ void localwbending(double**k, Node*list, int first, int sec)
     k[0][2] = -6*i*l*s;
     k[0][3] = -i12*s2 -al2*c2;
     k[0][4] = (i12-al2)*cs;
-    k[0][5] = 6*i*l*s;
+    k[0][5] = -6*i*l*s;
     k[1][0] = (al2-i12)*cs;
     k[1][1] = i12*c2 +al2*s2;
     k[1][2] = 6*i*l*c;
@@ -132,7 +91,7 @@ void localwbending(double**k, Node*list, int first, int sec)
     k[4][3] = (al2-i12)*cs;
     k[4][4] = i12*c2 +al2*s2;
     k[4][5] = -6*i*l*c;
-    k[5][0] = 6*i*l*s;
+    k[5][0] = -6*i*l*s;
     k[5][1] = 6*i*l*c;
     k[5][2] = 2*i*l*l;
     k[5][3] = 6*i*l*s;
@@ -147,7 +106,7 @@ void localwbending(double**k, Node*list, int first, int sec)
 		}
 
 	}
-    ////MPrint(k,size,size);
+    //MPrint(k,size,size);
 }
 
 void KAssemble(double**k,Node*list,int NCNT)
@@ -164,23 +123,61 @@ void KAssemble(double**k,Node*list,int NCNT)
     DeleteMatrix(6,local);
 }
 
-void localc(double**local,Node*list,int first,int sec)
+void localc(double**c,Node*list,int first,int sec)
 {
-    double**rot = CreateMatrix(6);
-    transformation(list,first,sec,rot);
-    zero(local,6);
+    double a = list[first].getFrac(list[sec],0,1);
+	double b = list[first].getFrac(list[sec],1,0);
+	double D = dampfac*list[first].getconnlength(0);
+
+/*
+	c =
+	{
+//		{			0,				1,			2,				3,					4,		5,	}
+		{  Da2,	 Dab, 0, -Da2,	  -Dab, 0},	// row 0
+		{  Dab,	 Db2, 0, -Dab,	  -Db2, 0},	// row 1
+		{  0  ,    0, B,    0,       0,-B},	// row 2
+		{ -Da2,	-Dab, 0,  Da2,	   Dab, 0},	// row 3
+		{ -Dab,	-Db2, 0,  Dab,	   Db2, 0},	// row 4
+		{  0  ,    0,-B,    0,       0, B},	// row 5
+	};
+*/
+
+    c[0][0] = D*a*a;
+    c[0][1] = D*a*b;
+    c[0][2] = 0;
+    c[0][3] = -D*a*a;
+    c[0][4] = -D*a*b;
+    c[0][5] = 0;
+    c[1][0] = D*a*b;
+    c[1][1] = D*b*b;
+    c[1][2] = 0;
+    c[1][3] = -D*a*b;
+    c[1][4] = -D*b*b;
+    c[1][5] = 0;
+    c[2][0] = 0;
+    c[2][1] = 0;
     c[2][2] = Bull;
+    c[2][3] = 0;
+    c[2][4] = 0;
     c[2][5] = -Bull;
+    c[3][0] = -D*a*a;
+    c[3][1] = -D*a*b;
+    c[3][2] = 0;
+    c[3][3] = D*a*a;
+    c[3][4] = D*a*b;
+    c[3][5] = 0;
+    c[4][0] = -D*a*b;
+    c[4][1] = -D*b*b;
+    c[4][2] = 0;
+    c[4][3] = D*a*b;
+    c[4][4] = D*b*b;
+    c[4][5] = 0;
+    c[5][0] = 0;
+    c[5][1] = 0;
     c[5][2] = -Bull;
+    c[5][3] = 0;
+    c[5][4] = 0;
     c[5][5] = Bull;
-    c[0][0] = dampfac*list[first].getNodelength();
-    c[3][0] = -dampfac*list[first].getNodelength();
-    c[0][3] = -dampfac*list[sec].getNodelength();
-    c[3][3] = dampfac*list[sec].getNodelength();
-    mulsquare(c,rot,c,6);
-    transpose(rot,6);
-    mulsquare(rot,c,c,6);
-    DeleteMatrix(6,rot);
 }
 
 void CAssemble(double**c,Node*list,int NCNT)
@@ -196,6 +193,64 @@ void CAssemble(double**c,Node*list,int NCNT)
     }
     DeleteMatrix(6,local);
 }
+
+void localm(double**k,Node*list,int first,int sec)
+{
+    double factor = (density*(list[first].GetConArea(0))*list[first].getconnlength(0))/420;
+    double c = list[first].getFrac(list[sec],0,1);
+    double s = list[first].getFrac(list[sec],1,0);
+
+    k[0][0] = factor*(140*c*c+15*s*s);
+    k[0][1] = -16*c*s*factor;
+    k[0][2] = -22*s*list[first].getconnlength(0)*factor;
+    k[0][3] = factor*(70*c*c+54*s*s);
+    k[0][4] = 16*c*s*factor;
+    k[0][5] = 13*s*list[first].getconnlength(0)*factor;
+    k[1][0] = -16*c*s*factor;
+    k[1][1] = (140*s*s+156*c*c)*factor;
+    k[1][2] = factor*(22*c*list[first].getconnlength(0));
+    k[1][3] = factor*16*c*s;
+    k[1][4] = factor*(70*s*s*54*c*c);
+    k[1][5] = -13*(c)*factor*list[first].getconnlength(0);
+    k[2][0] = -22*s*list[first].getconnlength(0)*factor;
+    k[2][1] = factor*(22*c*list[first].getconnlength(0));
+    k[2][2] = 4*(list[first].getconnlength(0))*(list[first].getconnlength(0))*factor;
+    k[2][3] = -13*s*list[first].getconnlength(0)*factor;
+    k[2][4] = 13*c*(list[first].getconnlength(0))*factor;
+    k[2][5] = -3*(list[first].getconnlength(0))*(list[first].getconnlength(0))*factor;
+    k[3][0] = factor*(70*c*c+54*s*s);
+    k[3][1] = factor*16*c*s;
+    k[3][2] = -13*s*list[first].getconnlength(0)*factor;
+    k[3][3] = (140*c*c+156*s*s)*factor;
+    k[3][4] = -16*c*s*factor;
+    k[3][5] = 22*s*list[first].getconnlength(0)*factor;
+    k[4][0] = 16*c*s*factor;
+    k[4][1] = factor*(70*s*s*54*c*c);
+    k[4][2] = 13*c*(list[first].getconnlength(0))*factor;
+    k[4][3] = -16*c*s*factor;
+    k[4][4] = (140*s*s+156*c*c)*factor;
+    k[4][5] = -22*c*(list[first].getconnlength(0))*factor;
+    k[5][0] = 13*s*list[first].getconnlength(0)*factor;
+    k[5][1] = -13*(c)*factor*list[first].getconnlength(0);
+    k[5][2] = -3*(list[first].getconnlength(0))*(list[first].getconnlength(0))*factor;
+    k[5][3] = 22*s*list[first].getconnlength(0)*factor;
+    k[5][4] = -22*c*(list[first].getconnlength(0))*factor;
+    k[5][5] = 4*(list[first].getconnlength(0))*(list[first].getconnlength(0))*factor;
+}
+
+void MAssemble(double**m,Node*list,int NCNT)
+{
+    double**local = CreateMatrix(6);
+    for(int i=0;i<NCNT;i++)
+    {
+        for(int j=0;j<list[i].getconn();j++)
+        {
+            localm(local,list,i,list[i].connto(0));
+            addLocToGlo(m,local,i,list[i].connto(0),3);
+        }
+    }
+    DeleteMatrix(6,local);
+}
 //Select is used to choose double derivative, derivative, or proportional (2,1, or 0)
 //It is assumed that the dependant variable (ex. force) is only transferred axially
 //transformation matrix is passed as a parameter so that it can be used multiple
@@ -203,14 +258,14 @@ void CAssemble(double**c,Node*list,int NCNT)
 
 
 // matrices named for M, C, and K for visualization purposes
-void GAssemble(int size,double**M,double**C,double**K,double*G,Force*forces)
+void GAssemble(int size,double**M,double**C,double**K,double*G,double*forces)
 {
     for(int i=0;i<size;i++)
     {
-        G[i] = forces[i].curval;
+        G[i] = forces[i];
         for(int j=0;j<size;j++)
         {
-            G[i] += ((-2*M[i][j]/DTauSqd)+K[i][j])*CurDisplacement[j] + (-(C[i][j]/TwiceDTau) + (M[i][j]/DTauSqd))*LastDisplacement[j];
+            G[i] += ((2*M[i][j]/DTauSqd)-K[i][j])*CurDisplacement[j] + ((C[i][j]/TwiceDTau) - (M[i][j]/DTauSqd))*LastDisplacement[j];
         }
     }
 }
@@ -228,12 +283,12 @@ void AAssemble(int size,double**M,double**C,double**A)
 int main()
 {
     //Initialization.
-    int NCNT, DoF = 3, numFixed = 3;
-    int nodesfixed[3];
+    int NCNT, DoF = 3, numFixed = 4;
+    int nodesfixed[4];
     nodesfixed[0] = 0;
     nodesfixed[1] = 1;
+    nodesfixed[2] = 2;
     Node*nodes = NULL;
-    Force*exforce = NULL;
     bool grav = false;
     int size;
     ofstream output ("Output.txt");
@@ -246,23 +301,19 @@ int main()
     cout << "Enter 1 for gravity, 0 for no gravity"
         << endl << "(Gravity is assumed to act in the negative y direction)" << endl;
     cin >> grav;
-//    cout << "Enter the Modulus of Elasticity in GPa" << endl;
-//    cin >> ModulusofElasticity ;
-//    ModulusofElasticity *= 1e9;
-    cout << "Enter the Modulus of Damping in whatever units" << endl;
-    cin >> ModulusofDamping;
+
     cout << "Enter the number of nodes you would like to use" << endl;
     cin >> NCNT;
 
     nodes = new Node[NCNT];
     //6 ribs, rib thickness 3mm, outer 6mm, 2.4384m half length, 0.034925m to 0.0508m to 0.022225m thick
     //0.498475m wide
-    nodes[0].initProb(nodes,6,0.006,0.003,2.4384,2.4384,0.034925,0.0508,0.022225,0.498475,NCNT,2.4384,1,1,2850,nodesfixed);
+    nodes[0].initProb(nodes,6,0.001,0.001,2.4384,2.4384,0.034925,0.0508,0.022225,0.498475,NCNT,2.4384,1,1,density,nodesfixed);
     size = DoF*NCNT;
 
-    output << size << endl;
+    output << NCNT << endl;
     //allocate and zero out
-    exforce = new Force[size];
+    double *exforce = new double[size];
     CurDisplacement = new double[size];
     LastDisplacement = new double[size];
     NextDisplacement = new double[size];
@@ -291,14 +342,18 @@ int main()
         amplitude[i] = 0;
         mean[i] = 0;
         peak[i] = -1e20;
-        exforce[i].curval = 0;
-        if(grav && ((ony == 1)))
+        exforce[i] = 0;
+        if(grav && (ony == 1))
         {
-            exforce[i].curval -= 9.80665*nodes[(i/DoF)].getselffactor(2); //exploiting integer division here
+            exforce[i] -= 9.80665*nodes[(i/DoF)].getselffactor(2); //exploiting integer division here
         }
         if((ony++) >1)
         {
             ony = 0;
+        }
+        if(i == 28)
+        {
+            exforce[i] += -600;
         }
     }
 
@@ -306,7 +361,7 @@ int main()
     int lj;
 
     //set up time
-    int cycles = ceil(TFinal/DTau)+1;
+    long int cycles = ceil(TFinal/DTau)+1;
     int plotinterval = cycles/5000; //plotting millions of points is insane
     if(plotinterval<1)
     {
@@ -314,36 +369,35 @@ int main()
     }
     DTauSqd = DTau*DTau; //Precalculate repeatedly used values
     TwiceDTau = DTau*2;
+
+    for(int i=0;i<NCNT;i++)
+    {
+        output << nodes[i].getInitialstate(0) << " "
+               << nodes[i].getInitialstate(1) << " ";
+    }
+    output << endl;
+
     for (int i = 0;i<cycles;i++)
     {
         //now the coupled elements
 
-        if(1) //this should be replaced by criteria for updating the matrices
-        {
+        MAssemble(M,nodes,NCNT);
+        KAssemble(K,nodes,NCNT);
+        CAssemble(C,nodes,NCNT);
 
-            //coupledAssemble(nodes,Kc,0,NCNT,DoF);
-            //coupledAssemble(nodes,Cc,1,NCNT,DoF);
-            //addm(Kc,Ks,Kc,size,size);
-            //addm(Cc,Cs,Cc,size,size);
-            //coupledAssemble(nodes,Mc,2,NCNT,DoF);
-        }
-
-        MPrint(K,size,size);
-        MPrint(C,size,size);
-        MPrint(M,size,size);
+        //MPrint(K,size,size);
+        //MPrint(C,size,size);
+        //MPrint(M,size,size);
         fixindx = 0;
 
         GAssemble(size,M,C,K,G,exforce);
         AAssemble(size,M,C,A);
 
-        MPrint(A,size,size);
-        PrintV(G,size);
+        //MPrint(A,size,size);
+        //PrintV(G,size);
 
-        createsubmatrix(A, submatrix,size,nodesfixed,numFixed);
+        createsubmatrix(A,submatrix,size,nodesfixed,numFixed);
         createsubG(G,subG,size,nodesfixed,numFixed);
-
-        MPrint(submatrix,(size-numFixed),(size-numFixed));
-
         lud(submatrix,subG,(size-(numFixed)),subnextdis);
 
         //put next displacements into main vector
@@ -390,13 +444,6 @@ int main()
                 CurDisplacement[(j*DoF + d)] = NextDisplacement[(j*DoF + d)];
             }
             nodes[j].UpdateDelta(updatevector);
-        }
-
-        //code to see if system if stable.
-        //it's not (very bad)
-        for(int d=0;d<size;d++)
-        {
-            exforce[d].curval = 0;
         }
     }
 
