@@ -1,13 +1,11 @@
 
-
-#include "stdafx.h"
 #include "CirMain.h"
 ///*
 
 #include <algorithm> // for std::swap
 #include <cstddef>
 #include <cassert>
- 
+
 ////////////////////////////////////////////////////////////////////////////////////
  ////////////begin code borrowed
 
@@ -39,7 +37,7 @@
 // Note that the functions are all inline and simple, so the compiler
 // should completely optimize them away.
 /*
-template<typename MatrixType> 
+template<typename MatrixType>
 
 struct matrix_traits
 {
@@ -58,7 +56,7 @@ struct matrix_traits
   static value_type element(MatrixType const& A, index_type i, index_type k)
   { return A(i,k); }
 };
- 
+
 // specialization of the matrix traits for built-in two-dimensional arrays
 template<typename T, std::size_t rows, std::size_t columns>
  struct matrix_traits<T[rows][columns]>
@@ -80,7 +78,7 @@ template<typename T, std::size_t rows, std::size_t columns>
                             index_type i, index_type k)
   { return A[i][k]; }
 };
- 
+
 // Swap rows i and k of a matrix A
 // Note that due to the reference, both dimensions are preserved for
 // built-in arrays
@@ -91,18 +89,18 @@ template<typename MatrixType>
 {
   matrix_traits<MatrixType> mt;
   typedef typename matrix_traits<MatrixType>::index_type index_type;
- 
+
   // check indices
   assert(mt.min_row(A) <= i);
   assert(i <= mt.max_row(A));
- 
+
   assert(mt.min_row(A) <= k);
   assert(k <= mt.max_row(A));
- 
+
   for (index_type col = mt.min_column(A); col <= mt.max_column(A); ++col)
     std::swap(mt.element(A, i, col), mt.element(A, k, col));
 }
- 
+
 // divide row i of matrix A by v
 template<typename MatrixType>
  void divide_row(MatrixType& A,
@@ -111,16 +109,16 @@ template<typename MatrixType>
 {
   matrix_traits<MatrixType> mt;
   typedef typename matrix_traits<MatrixType>::index_type index_type;
- 
+
   assert(mt.min_row(A) <= i);
   assert(i <= mt.max_row(A));
- 
+
   assert(v != 0);
- 
+
   for (index_type col = mt.min_column(A); col <= mt.max_column(A); ++col)
     mt.element(A, i, col) /= v;
 }
- 
+
 // in matrix A, add v times row k to row i
 template<typename MatrixType>
  void add_multiple_row(MatrixType& A,
@@ -130,26 +128,26 @@ template<typename MatrixType>
 {
   matrix_traits<MatrixType> mt;
   typedef typename matrix_traits<MatrixType>::index_type index_type;
- 
+
   assert(mt.min_row(A) <= i);
   assert(i <= mt.max_row(A));
- 
+
   assert(mt.min_row(A) <= k);
   assert(k <= mt.max_row(A));
- 
+
   for (index_type col = mt.min_column(A); col <= mt.max_column(A); ++col)
     mt.element(A, i, col) += v * mt.element(A, k, col);
 }
- 
+
 // convert A to reduced row echelon form
 template<typename MatrixType>
  void to_reduced_row_echelon_form(MatrixType& A)
 {
   matrix_traits<MatrixType> mt;
   typedef typename matrix_traits<MatrixType>::index_type index_type;
- 
+
   index_type lead = mt.min_row(A);
- 
+
   for (index_type row = mt.min_row(A); row <= mt.max_row(A); ++row)
   {
     if (lead > mt.max_column(A))
@@ -175,7 +173,7 @@ template<typename MatrixType>
     }
   }
 }
- 
+
  */
  ////////////end code borrowed
  //////////////////////////////////////////////////////////////////////////////
@@ -196,13 +194,16 @@ CirMain::CirMain(int nodes, double ElasticMod)
 
 	d_PosIMtx = (double*)calloc(nodes*2, sizeof (double));	//Initial Node Postions, in x, y, with respect to First Node
 	d_PosFMtx = (double*)calloc(nodes*2, sizeof (double));	//Initial Node Postions, in x, y, with respect to First Node
-	
+
 	d_PosLIMtx = (double*)calloc(nodes*1, sizeof (double));	//Initial Element Length
 	d_PosLFMtx = (double*)calloc(nodes*1, sizeof (double));	//Final Element Length
-	d_PosAMtx = (double*)calloc(nodes*1, sizeof (double));	//Strain Element Length, d_PosLFMtx - d_PosLIMtx
+	d_PosAMtx = (double*)calloc(nodes*1, sizeof (double));	//Final Element Angle
+
+    d_AreMtx = (double*)calloc(nodes*1, sizeof (double));	//Local Element Area
+    d_AMIMtx = (double*)calloc(nodes*1, sizeof (double));	//Local Element Moment of Inertia
 
 	d_DisMtx = (double*)calloc(nodes*3, sizeof (double));	//Global Node Displacement, in x, y, w, with respect to Respective Node
-	d_ForMtx = (double*)calloc(nodes*3, sizeof (double));	//Initial Node Postions, with respect to First Node
+	d_ForMtx = (double*)calloc(nodes*3, sizeof (double));	//Initial Forces, with respect to First Node
 
 	d_DisLMtx = (double*)calloc(nodes*6, sizeof (double));	//Local Element Displacement, in x1, y1, w1, x2, y2, w2, with respect to Respective Node
 	d_ForLMtx = (double*)calloc(nodes*6, sizeof (double));	//Local Element Forces, in u1, v1, o1, u2, v2, o2, with respect to Respective Node
@@ -215,28 +216,45 @@ CirMain::CirMain(int nodes, double ElasticMod)
 
 CirMain::~CirMain(void)
 {
+	delete d_PosIMtx;
+	delete d_PosFMtx;
+
+	delete d_PosLIMtx;
+	delete d_PosLFMtx;
+	delete d_PosAMtx;
+
+    delete d_AreMtx;
+    delete d_AMIMtx;
+
 	delete d_DisMtx;
 	delete d_ForMtx;
+
+	delete d_DisLMtx;
+	delete d_ForLMtx;
+
+	delete d_StsAMtx;
+	delete d_StsBMtx;
+	delete d_StsTMtx;
 }
 
 
 void CirMain::Trans_PosIF() // angle in rads
-{	
+{
 	for (int i = 0; i < i_nodenm; i++)
-	{		
+	{
 		d_PosFMtx[2*i+0] = d_PosIMtx[2*i+0]+ d_DisMtx[3*i+0];
 		d_PosFMtx[2*i+1] = d_PosIMtx[2*i+1]+ d_DisMtx[3*i+1];
 	}
 }
 void CirMain::Trans_PosLg() // angle in rads
-{	
+{
 	double dx = 1;
 	double dy = 1;
 	double ddx = 1;
 	double ddy = 1;
 
-	for (int i = 0; i < i_nodenm-1; i++)
-	{		
+	for (int i = 0; i < (i_nodenm-1); i++)
+	{
 		dx = (d_PosIMtx[2*(i+1) +0] - d_PosIMtx[2*(i+0) +0]);
 		dy = (d_PosIMtx[2*(i+1) +1] - d_PosIMtx[2*(i+0) +1]);
 
@@ -249,11 +267,11 @@ void CirMain::Trans_PosLg() // angle in rads
 	}
 }
 void CirMain::Trans_PosAg() // angle in rads
-{	
+{
 	double dx = 1;
 	double dy = 1;
 	for (int i = 0; i < i_nodenm-1; i++)
-	{		
+	{
 		dx = (d_PosFMtx[2*(i+1) +0] - d_PosFMtx[2*(i+0) +0]);
 		dy = (d_PosFMtx[2*(i+1) +1] - d_PosFMtx[2*(i+0) +1]);
 
@@ -266,7 +284,7 @@ void CirMain::Stiff_Multip204() // angle in rads
 {
 	for (int i = 0; i < i_nodenm-1; i++)
 	{
-		Stiff_Single204(i, d_PosLFMtx[i], 0.01, 0.0000000001, d_PosAMtx[i]);
+		Stiff_Single204(i, d_PosLFMtx[i], d_AreMtx[i], d_AMIMtx[i], d_PosAMtx[i]);
 	}
 }
 void CirMain::Stiff_Single204(int i_node, double d_Length, double d_CrArea, double d_MomInt, double d_GloAgl) // angle in rads
@@ -281,7 +299,7 @@ void CirMain::Stiff_Single204(int i_node, double d_Length, double d_CrArea, doub
 	double al2 = a*l*l;
 	double i12 = 12*i;
 	double el3 = d_ElaMod/l/l/l;
-	
+
 	double c2 = c*c;
 	double s2 = s*s;
 	double cs = c*s;
@@ -298,7 +316,7 @@ void CirMain::Stiff_Single204(int i_node, double d_Length, double d_CrArea, doub
 		{	 (i12-al2)*cs,-i12*c2 -al2*s2, -6*i*l*c,	(al2-i12)*cs,	i12*c2 +al2*s2, -6*i*l*c},	// row 4
 		{		 -6*i*l*s,		  6*i*l*c,	2*i*l*l,		 6*i*l*s,		  -6*i*l*c,  4*i*l*l},	// row 5
 	};
-	
+
 	for (int f = 0; f < 6; f++)
 	{
 		for (int g = 0; g < 6; g++)
@@ -313,7 +331,7 @@ void CirMain::Stiff_MultipHut() // angle in rads
 {
 	for (int i = 0; i < i_nodenm-1; i++)
 	{
-		Stiff_SingleHut(i, d_PosLFMtx[i], 0.01, 0.00000001, d_PosAMtx[i]);
+		Stiff_SingleHut(i, d_PosLFMtx[i], d_AreMtx[i], d_AMIMtx[i], d_PosAMtx[i]);
 	}
 }
 void CirMain::Stiff_SingleHut(int i_node, double d_Length, double d_CrArea, double d_MomInt, double d_GloAgl) // angle in rads
@@ -345,7 +363,7 @@ void CirMain::Stiff_SingleHut(int i_node, double d_Length, double d_CrArea, doub
 		{	 0,	 -i12, -6*i*l,		0,	  i12, -6*i*l},	// row 1
 		{	 0,	6*i*l,2*i*l*l,		0, -6*i*l,4*i*l*l},	// row 0
 	};
-	
+
 	for (int f = 0; f < 6; f++)
 	{
 		for (int g = 0; g < 6; g++)
@@ -366,20 +384,20 @@ void CirMain::Trans_Multip() // angle in rads
 void CirMain::Trans_Single(int i_node, double d_GloAgl) // angle in rads
 {
 	int number = i_node;
-	
+
 	double c = cos(d_GloAgl);
 	double s = sin(d_GloAgl);
 
 	double transarray[6][6] =
 	{
 		{		c,		s,		0,		0,		0,		0},	// row 0
-		{	   -s,		c,		0,		0,		0,		0},	// row 1		
+		{	   -s,		c,		0,		0,		0,		0},	// row 1
 		{		0,		0,		1,		0,		0,		0},	// row 2
 		{		0,		0,		0,		c,		s,		0},	// row 3
 		{		0,		0,		0,	   -s,		c,		0},	// row 4
 		{		0,		0,		0,		0,		0,		1},	// row 5
 	};
-	
+
 	for (int f = 0; f < 6; f++)
 	{
 		for (int g = 0; g < 6; g++)
@@ -389,45 +407,85 @@ void CirMain::Trans_Single(int i_node, double d_GloAgl) // angle in rads
 
 	}
 }
-void CirMain::Trans_StsTMtx() // angle in rads
+
+
+double CirMain::Trans_StsTMtx() // angle in rads
 {
+    double d_Max = 0;
 	for (int i = 0; i < i_nodenm-1; i++)
 	{
-		d_StsTMtx[i*2] =   -d_ForLMtx[i*6]/0.01	-d_ForLMtx[i*6+2]*0.01/0.00000001;
-		d_StsTMtx[i*2+1] = -d_ForLMtx[i*6]/0.01	+d_ForLMtx[i*6+2]*0.01/0.00000001;
+		d_StsTMtx[i*2] =   -d_ForLMtx[i*6]/d_AreMtx[i]	-d_ForLMtx[i*6+2]*0.015/d_AMIMtx[i];
+		d_StsTMtx[i*2+1] = -d_ForLMtx[i*6]/d_AreMtx[i]	+d_ForLMtx[i*6+2]*0.015/d_AMIMtx[i];
+
+		if (d_StsTMtx[i*2]<0)
+		{
+            if (d_Max < (d_StsTMtx[i*2]*-1))
+            {
+                d_Max = d_StsTMtx[i*2];
+            }
+		}
+		else
+		{
+            if (d_Max < (d_StsTMtx[i*2]))
+            {
+                d_Max = d_StsTMtx[i*2];
+            }
+		}
+
+		if (d_StsTMtx[i*2+1]<0)
+		{
+            if (d_Max < (d_StsTMtx[i*2+1]*-1))
+            {
+                d_Max = d_StsTMtx[i*2+1];
+            }
+		}
+		else
+		{
+            if (d_Max < (d_StsTMtx[i*2+1]))
+            {
+                d_Max = d_StsTMtx[i*2+1];
+            }
+		}
 	}
+
+	return d_Max;
+
 }
 
 
-void CirMain::Cin_PosIMtx()
+void CirMain::Cin_PosIMtx(double* inipos)
 {
 	for (int i = 0; i < i_nodenm; i++)
 	{
 	//	d_PosIMtx[2*i+0] = 0;
 	//	d_PosIMtx[2*i+1] = 2*i;
-		d_PosIMtx[2*i+0] = 0.1*i;
-		d_PosIMtx[2*i+1] = 0;
+		d_PosIMtx[2*i+0] = inipos[i*2];
+		d_PosIMtx[2*i+1] = inipos[i*2+1];
 	}
 }
-void CirMain::Cin_DisMtx()
+void CirMain::Cin_DisMtx(double* inidis)
 {
-//	for (int i = 0; i < i_nodenm; i++)
-//	{
-//		d_DisMtx[3*i+0] = 0;
-//		d_DisMtx[3*i+1] = i;
-//	}
-	///*
-	for (int i = 0; i < i_nodenm; i++)
+
+    for (int i = 0; i < i_nodenm; i++)
+	{
+
+        d_DisMtx[i*3+0] = inidis[i*3 ];
+        d_DisMtx[i*3+1] = inidis[i*3 +1];
+        d_DisMtx[i*3+2] = inidis[i*3 +2];
+
+	}
+
+/*	for (int i = 0; i < i_nodenm; i++)
 	{
 		for (int j = 0; j < 3; j++)
-		{	
+		{
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					d_DisMtx[i*3+j] = 0.001*i;  break;
-				case 1:	
+				case 1:
 					d_DisMtx[i*3+j] = 0.001*i*i;  break;
-				case 2:	
+				case 2:
 					d_DisMtx[i*3+j] = 0.02;  break;
 			}
 		}
@@ -435,23 +493,58 @@ void CirMain::Cin_DisMtx()
 //	*/
 }
 
+void CirMain::Cin_AreMtx(double* area)
+{
+	for (int i = 0; i < i_nodenm-1; i++)
+	{
+		d_AreMtx[i] = area[i];
+	}
+}
+void CirMain::Cin_AMIMtx(double* areamoment)
+{
+	for (int i = 0; i < i_nodenm-1; i++)
+	{
+		d_AMIMtx[i] = areamoment[i];
+	}
+}
+void CirMain::Cout_AreMtx()
+{
+	printf("Area Matrix \n");
+	for (int i = 0; i < i_nodenm; i++)
+	{
+		printf("section %d", i);
+		printf("|	%.4f	|", d_AreMtx[i]);
+		printf("\n");
+	}
+}
+void CirMain::Cout_AMIMtx()
+{
+	printf("AMI Matrix \n");
+	for (int i = 0; i < i_nodenm; i++)
+	{
+		printf("section %d", i);
+		printf("|	%.10f	|", d_AMIMtx[i]);
+		printf("\n");
+	}
+}
+
 
 void CirMain::Cout_PosIMtx()
 {
-	printf("Position Initial Matrix \n");	
+	printf("Position Initial Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("section %d", i);
 		printf("\n");
 
 		for (int j = 0; j < 2; j++)
-		{	
+		{
 			printf("|	%.4f	|", d_PosIMtx[i*2+j]);
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					printf("Px");  break;
-				case 1:	
+				case 1:
 					printf("Py");  break;
 			}
 			printf("\n");
@@ -460,20 +553,20 @@ void CirMain::Cout_PosIMtx()
 }
 void CirMain::Cout_PosFMtx()
 {
-	printf("Position Final Matrix \n");	
+	printf("Position Final Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("node %d", i);
 		printf("\n");
 
 		for (int j = 0; j < 2; j++)
-		{	
+		{
 			printf("|	%.4f	|", d_PosFMtx[i*2+j]);
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					printf("Px");  break;
-				case 1:	
+				case 1:
 					printf("Py");  break;
 			}
 			printf("\n");
@@ -482,7 +575,7 @@ void CirMain::Cout_PosFMtx()
 }
 void CirMain::Cout_PosAMtx()
 {
-	printf("Angle Matrix \n");	
+	printf("Angle Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("section %d", i);
@@ -492,7 +585,7 @@ void CirMain::Cout_PosAMtx()
 }
 void CirMain::Cout_PosLMtx()
 {
-	printf("Length Matrix \n");	
+	printf("Length Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
@@ -502,23 +595,23 @@ void CirMain::Cout_PosLMtx()
 }
 void CirMain::Cout_DisMtx()
 {
-	printf("Global Displacement - Global Frame Matrix \n");	
+	printf("Global Displacement - Global Frame Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("node %d", i);
 		printf("\n");
 
 		for (int j = 0; j < 3; j++)
-		{	
+		{
 			printf("|	%.4f	|", d_DisMtx[i*3+j]);
-			
+
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					printf("Ux");  break;
-				case 1:	
+				case 1:
 					printf("Uy");  break;
-				case 2:	
+				case 2:
 					printf("W");  break;
 			}
 			printf("\n");
@@ -529,29 +622,29 @@ void CirMain::Cout_DisMtx()
 
 void CirMain::Cout_ForMtx()
 {
-	printf("Local Force - Global Frame Matrix \n");	
+	printf("Local Force - Global Frame Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
 		printf("\n");
 
 		for (int j = 0; j < 6; j++)
-		{	
+		{
 			printf("|	%.0f	|", d_ForMtx[i*6+j]);
-			
+
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					printf("Fix");  break;
-				case 1:	
+				case 1:
 					printf("Fiy");  break;
-				case 2:	
+				case 2:
 					printf("Mi");  break;
-				case 3:	
+				case 3:
 					printf("Fjx");  break;
-				case 4:	
+				case 4:
 					printf("Fjx");  break;
-				case 5:	
+				case 5:
 					printf("Mj");  break;
 			}
 			printf("\n");
@@ -564,29 +657,29 @@ void CirMain::Cout_ForMtx()
 
 void CirMain::Cout_DisLMtx()
 {
-	printf("Local Displacement - Local Frame Matrix \n");	
+	printf("Local Displacement - Local Frame Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
 		printf("\n");
 
 		for (int j = 0; j < 6; j++)
-		{	
+		{
 			printf("|	%.5f	|", d_DisLMtx[i*6+j]);
-			
+
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					printf("uix");  break;
-				case 1:	
+				case 1:
 					printf("uiy");  break;
-				case 2:	
+				case 2:
 					printf("oi");  break;
-				case 3:	
+				case 3:
 					printf("ujx");  break;
-				case 4:	
+				case 4:
 					printf("ujy");  break;
-				case 5:	
+				case 5:
 					printf("oj");  break;
 			}
 			printf("\n");
@@ -596,29 +689,29 @@ void CirMain::Cout_DisLMtx()
 }
 void CirMain::Cout_ForLMtx()
 {
-	printf("Local Force - Local Frame Matrix \n");	
+	printf("Local Force - Local Frame Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
 		printf("\n");
 
 		for (int j = 0; j < 6; j++)
-		{	
+		{
 			printf("|	%.0f	|", d_ForLMtx[i*6+j]);
-			
+
 			switch (j)
 			{
-				case 0:	
+				case 0:
 					printf("uix");  break;
-				case 1:	
+				case 1:
 					printf("uiy");  break;
-				case 2:	
+				case 2:
 					printf("oi");  break;
-				case 3:	
+				case 3:
 					printf("ujx");  break;
-				case 4:	
+				case 4:
 					printf("ujy");  break;
-				case 5:	
+				case 5:
 					printf("oj");  break;
 			}
 			printf("\n");
@@ -629,22 +722,22 @@ void CirMain::Cout_ForLMtx()
 
 void CirMain::Cout_StsAMtx()
 {
-	printf("Axial Stress Matrix \n");	
+	printf("Axial Stress Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
-		printf("|	%.0f	|" "|	%.0f	|",  d_ForLMtx[i*6]/0.01,   (d_PosLFMtx[i]-d_PosLIMtx[i])/d_PosLIMtx[i]*d_ElaMod);
+		printf("|	%.0f	|" "|	%.0f	|",  d_ForLMtx[i*6]/ d_AreMtx[i],   (d_PosLFMtx[i]-d_PosLIMtx[i])/d_PosLIMtx[i]*d_ElaMod);
 		printf("\n");
 	}
 }
 void CirMain::Cout_StsBMtx()
 {
-	printf("Bending Stress Matrix \n");	
+	printf("Bending Stress Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
-		printf("|	%.0f	|" "|	%.0f	|",  -d_ForLMtx[i*6+2]*0.01/0.00000001,  
-			0.01*d_ElaMod*((6*(d_DisLMtx[i*6+4]-d_DisLMtx[i*6+1])/d_PosLFMtx[i]/d_PosLFMtx[i])-
+		printf("|	%.0f	|" "|	%.0f	|",  -d_ForLMtx[i*6+2]* 0.015/d_AMIMtx[i],
+			 0.015*d_ElaMod*((6*(d_DisLMtx[i*6+4]-d_DisLMtx[i*6+1])/d_PosLFMtx[i]/d_PosLFMtx[i])-
 			(2*(2*d_DisLMtx[i*6+5]+d_DisLMtx[i*6+2])/d_PosLFMtx[i]))
 			);
 		printf("\n");
@@ -654,7 +747,7 @@ void CirMain::Cout_StsBMtx()
 ///*
 void CirMain::Cout_StsTMtx()
 {
-	printf("Bending Stress Matrix \n");	
+	printf("Bending Stress Matrix \n");
 	for (int i = 0; i < i_nodenm; i++)
 	{
 		printf("element %d", i);
@@ -674,7 +767,7 @@ void CirMain::Cout_StsTMtx()
 //	p_Engine = engOpen("null");
 /*
   reduced_row_echelon_form(M);
-  
+
   for (int i = 0; i < 3; ++i)
   {
     for (int j = 0; j < 4; ++j)

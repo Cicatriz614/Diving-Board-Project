@@ -5,6 +5,7 @@
 #include <fstream>
 #include "matrixops.h"
 #include "node.h"
+#include "CirMain.h"
 /*
 #define DTau (2.5e-5)
 #define DTSQUARED (6.25e-10)
@@ -22,8 +23,8 @@ double TwiceDTau;
 double *CurDisplacement;
 double *LastDisplacement;
 double *NextDisplacement;
-double ModulusofElasticity = 100000000; //About right for 7000 series alloy
-const double Bull = 10;
+double ModulusofElasticity = 7000000000; //About right for 7000 series alloy
+const double Bull = 5;
 const double dampfac = 1.26044887;
 const double density = 2800; //kg/m3
 
@@ -280,6 +281,72 @@ void AAssemble(int size,double**M,double**C,double**A)
     }
 }
 
+void modExforce(double* exforce, int noofnodes, double curtau, Node*nodes, int noofjumps)
+{
+     double modcurtau = curtau;
+     for(int i = 0; i < noofnodes*3; i++)
+     {
+          exforce[i] = 0;
+     }
+     for(int i = 0; i < noofnodes*3; i++)
+     {
+          if(i % 3 == 1)
+          {
+               exforce[i] -= nodes[(i-1)/3].getselffactor(2)*9.81;
+          }
+     }
+     if(modcurtau < 1)
+     {
+          exforce[noofnodes-2] -= 700.0;
+          return;
+     }
+     if(modcurtau < 1.1)
+     {
+          exforce[noofnodes-2] -= -5000*modcurtau + 5700;
+          return;
+     }
+     if(modcurtau > (1.6 + noofjumps*1.5))
+     {
+         return;
+     }
+     if(modcurtau >= 1.1)
+     {
+          while(modcurtau > 2.6)
+          {
+               modcurtau -= 1.5;
+          }
+     }
+     if(modcurtau < 1.4)
+     {
+          exforce[noofnodes-2] -= 5000*modcurtau - 5300;
+          return;
+     }
+     if(modcurtau < 1.5)
+     {
+          exforce[noofnodes-2] -= -1000*modcurtau + 3100;
+          return;
+     }
+     if(modcurtau < 1.6)
+     {
+          exforce[noofnodes-2] -= -16000*modcurtau + 25600;
+          return;
+     }
+     if(modcurtau < 2.2)
+     {
+          return;
+     }
+     if(modcurtau < 2.3)
+     {
+          exforce[noofnodes-2] -= 20000*modcurtau - 44000;
+          return;
+     }
+     if(modcurtau < 2.6)
+     {
+          exforce[noofnodes-2] -= -(1800/0.3)*modcurtau + 15800;
+          return;
+     }
+     return;
+}
 int main()
 {
     //Initialization.
@@ -308,7 +375,7 @@ int main()
     nodes = new Node[NCNT];
     //6 ribs, rib thickness 3mm, outer 6mm, 2.4384m half length, 0.034925m to 0.0508m to 0.022225m thick
     //0.498475m wide
-    nodes[0].initProb(nodes,6,0.001,0.001,2.4384,2.4384,0.034925,0.0508,0.022225,0.498475,NCNT,2.4384,1,1,density,nodesfixed);
+    nodes[0].initProb(nodes,6,0.002,0.002,2.4384,2.4384,0.034925,0.0508,0.022225,0.498475,NCNT,2.4384,1,1,density,nodesfixed);
     size = DoF*NCNT;
 
     output << NCNT << endl;
@@ -317,6 +384,9 @@ int main()
     CurDisplacement = new double[size];
     LastDisplacement = new double[size];
     NextDisplacement = new double[size];
+    double*initialpos = new double[NCNT*2];
+    double*areamoment = new double[NCNT-1];
+    double*area = new double[NCNT-1];
     double *G = new double[size];
     double **A = CreateMatrix(size);
     double **K = CreateMatrix(size);
@@ -332,6 +402,10 @@ int main()
     double *mean = new double[size];
     double *peak = new double[size];
     int ony = 0;
+
+    double maxcomp = 0;
+    double maxtens = 0;
+
     for(int i=0;i<size;i++)
     {
         CurDisplacement[i] = 0;
@@ -343,18 +417,18 @@ int main()
         mean[i] = 0;
         peak[i] = -1e20;
         exforce[i] = 0;
-        if(grav && (ony == 1))
-        {
-            exforce[i] -= 9.80665*nodes[(i/DoF)].getselffactor(2); //exploiting integer division here
-        }
-        if((ony++) >1)
-        {
-            ony = 0;
-        }
-        if(i == 28)
-        {
-            exforce[i] += -600;
-        }
+//        if(grav && (ony == 1))
+//        {
+//            exforce[i] -= 9.80665*nodes[(i/DoF)].getselffactor(2); //exploiting integer division here
+//        }
+//        if((ony++) >1)
+//        {
+//            ony = 0;
+//        }
+//        if(i == 28)
+//        {
+//            exforce[i] += -600;
+//        }
     }
 
     int fixindx;
@@ -362,7 +436,9 @@ int main()
 
     //set up time
     long int cycles = ceil(TFinal/DTau)+1;
-    int plotinterval = cycles/5000; //plotting millions of points is insane
+    double frames = ceil(TFinal*60);
+    int plotinterval = cycles/frames; //plotting millions of points is insane
+
     if(plotinterval<1)
     {
         plotinterval = 1;
@@ -372,6 +448,13 @@ int main()
 
     for(int i=0;i<NCNT;i++)
     {
+        if(i>0)
+        {
+            areamoment[i-1] = nodes[i].GetAreaMoment();
+            area[i-1] = nodes[i].GetConArea(0);
+        }
+        initialpos[i*2] = nodes[i].getInitialstate(0);
+        initialpos[i*2+1] = nodes[i].getInitialstate(1);
         output << nodes[i].getInitialstate(0) << " "
                << nodes[i].getInitialstate(1) << " ";
     }
@@ -390,6 +473,7 @@ int main()
         //MPrint(M,size,size);
         fixindx = 0;
 
+        modExforce(exforce,NCNT,i*DTau,nodes,2);
         GAssemble(size,M,C,K,G,exforce);
         AAssemble(size,M,C,A);
 
@@ -445,9 +529,66 @@ int main()
             }
             nodes[j].UpdateDelta(updatevector);
         }
+
+
+
+    CirMain* c_SSolve = new CirMain(NCNT,ModulusofElasticity);
+
+	c_SSolve->Cin_PosIMtx(initialpos);
+//	c_SSolve->Cout_PosIMtx();
+
+	c_SSolve->Cin_DisMtx(CurDisplacement);
+//	c_SSolve->Cout_DisMtx();
+
+	c_SSolve->Cin_AreMtx(area);
+//	c_SSolve->Cout_AreMtx();
+
+    c_SSolve->Cin_AMIMtx(areamoment);
+//	c_SSolve->Cout_AMIMtx();
+
+	c_SSolve->Trans_PosIF();
+//	c_SSolve->Cout_PosFMtx();
+
+	c_SSolve->Trans_PosLg();
+//	c_SSolve->Cout_PosLMtx();
+
+	c_SSolve->Trans_PosAg();
+//	c_SSolve->Cout_PosAMtx();
+
+	c_SSolve->Trans_Multip();
+//	c_SSolve->Cout_DisLMtx();
+
+	c_SSolve->Stiff_MultipHut();
+//	c_SSolve->Cout_ForLMtx();
+
+//	c_SSolve->Cout_StsAMtx();
+//	c_SSolve->Cout_StsBMtx();
+
+	double tmptens = c_SSolve->Trans_StsTMtx();
+
+	if(tmptens<0)
+    {
+        if(maxtens<(tmptens*-1))
+        {
+            maxtens = tmptens;
+        }
+    }
+    else
+    {
+        if(maxtens<tmptens)
+        {
+            maxtens = tmptens;
+        }
     }
 
+	//c_SSolve->Cout_StsTMtx();
+
+    delete c_SSolve;
+
+    }
+    cout << maxtens << endl;
     cout << "no seg faults" << endl;
-    cin.get();
+    system("PAUSE");
+
     return 0;
 }

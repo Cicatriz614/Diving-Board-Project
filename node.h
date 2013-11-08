@@ -265,7 +265,7 @@ void Node::initProb(Node Nodes[], int ribs, double twall, double trib, double l1
 
              moment = (hm/12)*width*width + (hm*(height-twall)*(height-twall)/4) + (vm/12)*(2*twall+ribs*trib)*(2*twall+ribs*trib);
              Nodes[current_node].initNodeCell(3,0,1,vm+hm,1,stiff,damp,moment,x,y,height,twall,trib,ribs,width,current_node,sl);
-             nodesfixed[3] = 3*current_node + 1;
+             nodesfixed[3] = 3*(current_node-1) + 1;
              furthest_edge += sl;
              current_node++;
              fulcrum_done = 1;
@@ -296,7 +296,7 @@ void Node::initProb(Node Nodes[], int ribs, double twall, double trib, double l1
 
              moment = (hm/12)*width*width + (hm*(height-twall)*(height-twall)/4) + (vm/12)*(2*twall+ribs*trib)*(2*twall+ribs*trib);
              Nodes[current_node].initNodeCell(3,0,1,vm+hm,1,stiff,damp,moment,x,y,height,twall,trib,ribs,width,current_node,sl);
-             nodesfixed[3] = 3*current_node + 1;
+             nodesfixed[3] = 3*(current_node-1) + 1;
              furthest_edge += sl;
              current_node++;
              fulcrum_done = 1;
@@ -305,7 +305,7 @@ void Node::initProb(Node Nodes[], int ribs, double twall, double trib, double l1
         if((furthest_edge + sl) > (l2 + l1))
         {
              height = ((Nodes[current_node-1].nodeheight + slope2*sl/2) + h3)/2;
-             x = Nodes[current_node-1].initialstate[0] + ((l1+l2)-furthest_edge)/2;
+             x = Nodes[current_node-1].initialstate[0] + sl;
              y = (h1-height)/2;
              vm = ((height-2*twall)*(ribs*trib+2*twall)*(sl/2) + (height-2*twall)*(width-ribs*trib-2*twall)*(twall)) *(density);
              hm = 2*(width)*(twall)*(sl)*(density);
